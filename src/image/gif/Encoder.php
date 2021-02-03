@@ -121,9 +121,6 @@ class Encoder
         }
         switch ($Locals_tmp[0]) {
             case '!':
-                /**
-                 * @var string $Locals_img ;
-                 */
                 $Locals_img = substr($Locals_tmp, 8, 10);
                 $Locals_tmp = substr($Locals_tmp, 18, strlen($Locals_tmp) - 18);
                 break;
