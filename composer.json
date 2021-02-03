@@ -1,0 +1,19 @@
+{
+    "name": "hulang/think-image",
+    "description": "The ThinkPHP6 Image Package",
+    "license": "Apache-2.0",
+    "require": {
+        "php": ">=7.1.0",
+        "ext-gd": "*",
+        "topthink/framework": "^6.0.0",
+        "phpunit/phpunit": "4.8.*"
+    },
+    "config": {
+        "preferred-install": "dist"
+    },
+    "autoload": {
+        "psr-4": {
+            "think\\": "src"
+        }
+    }
+}
