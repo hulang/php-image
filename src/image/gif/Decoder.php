@@ -23,8 +23,8 @@ class Decoder
     public function __construct($GIF_pointer)
     {
         $this->GIF_stream = $GIF_pointer;
-        $this->getByte(6); // GIF89a
-        $this->getByte(7); // Logical Screen Descriptor
+        $this->getByte(6);
+        $this->getByte(7);
         $this->GIF_screen = $this->GIF_buffer;
         $this->GIF_colorF = $this->GIF_buffer[4] & 0x80 ? 1 : 0;
         $this->GIF_sorted = $this->GIF_buffer[4] & 0x08 ? 1 : 0;
@@ -34,7 +34,6 @@ class Decoder
             $this->getByte(3 * $this->GIF_colorS);
             $this->GIF_global = $this->GIF_buffer;
         }
-
         for ($cycle = 1; $cycle;) {
             if ($this->getByte(1)) {
                 switch ($this->GIF_buffer[0]) {

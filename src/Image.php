@@ -7,7 +7,6 @@ use think\image\gif\Gif;
 
 class Image
 {
-
     /* 缩略图相关常量定义 */
     const THUMB_SCALING   = 1; //常量，标识缩略图等比例缩放类型
     const THUMB_FILLED    = 2; //常量，标识缩略图缩放后填充类型
@@ -50,12 +49,10 @@ class Image
     {
         //获取图像信息
         $info = @getimagesize($file->getPathname());
-
         //检测图像合法性
         if (false === $info || (IMAGETYPE_GIF === $info[2] && empty($info['bits']))) {
             throw new ImageException('Illegal image file');
         }
-
         //设置图像信息
         $this->info = [
             'width'  => $info[0],
@@ -63,7 +60,6 @@ class Image
             'type'   => image_type_to_extension($info[2], false),
             'mime'   => $info['mime'],
         ];
-
         //打开图像
         if ('gif' == $this->info['type']) {
             $this->gif = new Gif($file->getPathname());
@@ -72,7 +68,6 @@ class Image
             $fun      = "imagecreatefrom{$this->info['type']}";
             $this->im = @$fun($file->getPathname());
         }
-
         if (empty($this->im)) {
             throw new ImageException('Failed to create image resources!');
         }
@@ -126,7 +121,6 @@ class Image
             $fun = 'image' . $type;
             $fun($this->im, $pathname);
         }
-
         return $this;
     }
 
@@ -187,10 +181,8 @@ class Image
             imagedestroy($this->im);
             $this->im = $img;
         } while (!empty($this->gif) && $this->gifNext());
-
         $this->info['width']  = imagesx($this->im);
         $this->info['height'] = imagesy($this->im);
-
         return $this;
     }
 
@@ -204,11 +196,8 @@ class Image
         //原图宽度和高度
         $w = $this->info['width'];
         $h = $this->info['height'];
-
         do {
-
             $img = imagecreatetruecolor($w, $h);
-
             switch ($direction) {
                 case self::FLIP_X:
                     for ($y = 0; $y < $h; $y++) {
@@ -223,11 +212,9 @@ class Image
                 default:
                     throw new ImageException('不支持的翻转类型');
             }
-
             imagedestroy($this->im);
             $this->im = $img;
         } while (!empty($this->gif) && $this->gifNext());
-
         return $this;
     }
 
@@ -435,7 +422,7 @@ class Image
             default:
                 /* 自定义水印坐标 */
                 if (is_array($locate)) {
-                    list($x, $y) = $locate;
+                    [$x, $y] = $locate;
                 } else {
                     throw new ImageException('不支持的水印位置类型');
                 }
@@ -480,7 +467,6 @@ class Image
         $offset = 0,
         $angle = 0
     ) {
-
         if (!is_file($font)) {
             throw new ImageException("不存在的字体文件：{$font}");
         }
@@ -540,7 +526,7 @@ class Image
             default:
                 /* 自定义文字坐标 */
                 if (is_array($locate)) {
-                    list($posx, $posy) = $locate;
+                    [$posx, $posy] = $locate;
                     $x += $posx;
                     $y += $posy;
                 } else {
@@ -550,7 +536,7 @@ class Image
         /* 设置偏移量 */
         if (is_array($offset)) {
             $offset        = array_map('intval', $offset);
-            list($ox, $oy) = $offset;
+            [$ox, $oy] = $offset;
         } else {
             $offset = intval($offset);
             $ox     = $oy     = $offset;
