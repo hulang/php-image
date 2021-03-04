@@ -8,9 +8,6 @@
         "topthink/framework": "^6.0.0",
         "phpunit/phpunit": "4.8.*"
     },
-    "config": {
-        "preferred-install": "dist"
-    },
     "autoload": {
         "psr-4": {
             "think\\": "src"
