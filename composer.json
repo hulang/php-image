@@ -3,12 +3,12 @@
     "description": "The ThinkPHP6 Image Package",
     "type": "library",
     "license": "Apache-2.0",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "require": {
         "php": ">=7.1.0",
         "ext-gd": "*",
         "topthink/framework": "^6.0.0",
-        "phpunit/phpunit": "4.8.*"
+        "phpunit/phpunit": "^7|^8|^9.5"
     },
     "autoload": {
         "psr-4": {

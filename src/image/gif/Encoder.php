@@ -1,6 +1,6 @@
 <?php
 
-namespace think\image\gif;
+namespace hulang\image\gif;
 
 class Encoder
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace think\image;
+namespace hulang\image;
 
 class Exception extends \RuntimeException
 {

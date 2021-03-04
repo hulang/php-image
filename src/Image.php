@@ -1,9 +1,9 @@
 <?php
 
-namespace think;
+namespace hulang;
 
-use think\image\Exception as ImageException;
-use think\image\gif\Gif;
+use hulang\image\Exception as ImageException;
+use hulang\image\gif\Gif;
 
 class Image
 {
