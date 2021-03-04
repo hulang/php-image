@@ -2,7 +2,7 @@
 
 ## 安装
 
-> composer require hulang/think-image
+> composer require hulang/php-image
 
 ## 使用
 

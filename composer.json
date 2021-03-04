@@ -3,7 +3,7 @@
     "description": "The ThinkPHP6 Image Package",
     "type": "library",
     "license": "Apache-2.0",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "require": {
         "php": ">=7.1.0",
         "ext-gd": "*",
