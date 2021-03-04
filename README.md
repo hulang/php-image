@@ -7,9 +7,9 @@
 ## 使用
 
 ~~~
-$image = \think\Image::open('./image.jpg');
+$image = \hulang\Image::open('./image.jpg');
 或者
-$image = \think\Image::open(request()->file('image'));
+$image = \hulang\Image::open(request()->file('image'));
 
 
 $image->crop(...)
