@@ -1,9 +1,9 @@
 {
-    "name": "hulang/think-image",
+    "name": "hulang/php-image",
     "description": "The ThinkPHP6 Image Package",
     "type": "library",
     "license": "Apache-2.0",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "require": {
         "php": ">=7.1.0",
         "ext-gd": "*",
@@ -12,7 +12,7 @@
     },
     "autoload": {
         "psr-4": {
-            "think\\": "src"
+            "hulang\\": "src"
         }
     }
 }
