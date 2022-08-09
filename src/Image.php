@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace hulang;
 
 use hulang\image\Exception as ImageException;
@@ -31,7 +33,7 @@ class Image
     /**
      * 图像资源对象
      *
-     * @var resource
+     * @return GdImage|false
      */
     protected $im;
 
