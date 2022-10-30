@@ -33,36 +33,36 @@ class Image
     /**
      * 图像资源对象
      *
-     * @return GdImage|false
+     * @return mixed|GdImage|false
      */
     protected $im;
 
-    /** @var  Gif */
+    /** @var  mixed|Gif */
     protected $gif;
 
     /**
      * 图像信息，包括 width, height, type, mime, size
      *
-     * @var array
+     * @var mixed|array
      */
     protected $info;
 
     protected function __construct(\SplFileInfo $file)
     {
-        //获取图像信息
+        // 获取图像信息
         $info = @getimagesize($file->getPathname());
-        //检测图像合法性
+        // 检测图像合法性
         if (false === $info || (IMAGETYPE_GIF === $info[2] && empty($info['bits']))) {
             throw new ImageException('Illegal image file');
         }
-        //设置图像信息
+        // 设置图像信息
         $this->info = [
             'width'  => $info[0],
             'height' => $info[1],
             'type'   => image_type_to_extension($info[2], false),
             'mime'   => $info['mime'],
         ];
-        //打开图像
+        // 打开图像
         if ('gif' == $this->info['type']) {
             $this->gif = new Gif($file->getPathname());
             $this->im  = @imagecreatefromstring($this->gif->image());
@@ -78,7 +78,7 @@ class Image
     /**
      * 打开一个图片文件
      * @param \SplFileInfo|string $file
-     * @return Image
+     * @return mixed|Image
      */
     public static function open($file)
     {
@@ -97,27 +97,27 @@ class Image
      * @param null|string $type      图像类型
      * @param int         $quality   图像质量
      * @param bool        $interlace 是否对JPEG类型图像设置隔行扫描
-     * @return $this
+     * @return mixed|$this
      */
     public function save($pathname, $type = null, $quality = 80, $interlace = true)
     {
-        //自动获取图像类型
+        // 自动获取图像类型
         if (is_null($type)) {
             $type = $this->info['type'];
         } else {
             $type = strtolower($type);
         }
-        //保存图像
+        // 保存图像
         if ('jpeg' == $type || 'jpg' == $type) {
-            //JPEG图像设置隔行扫描
+            // JPEG图像设置隔行扫描
             imageinterlace($this->im, $interlace);
             imagejpeg($this->im, $pathname, $quality);
         } elseif ('gif' == $type && !empty($this->gif)) {
             $this->gif->save($pathname);
         } elseif ('png' == $type) {
-            //设定保存完整的 alpha 通道信息
+            // 设定保存完整的 alpha 通道信息
             imagesavealpha($this->im, true);
-            //ImagePNG生成图像的质量范围从0到9的
+            // ImagePNG生成图像的质量范围从0到9的
             imagepng($this->im, $pathname, min((int) ($quality / 10), 9));
         } else {
             $fun = 'image' . $type;
@@ -128,7 +128,7 @@ class Image
 
     /**
      * 返回图像宽度
-     * @return int 图像宽度
+     * @return mixed|int
      */
     public function width()
     {
@@ -137,7 +137,7 @@ class Image
 
     /**
      * 返回图像高度
-     * @return int 图像高度
+     * @return mixed|int
      */
     public function height()
     {
@@ -155,7 +155,7 @@ class Image
 
     /**
      * 返回图像MIME类型
-     * @return string 图像MIME类型
+     * @return mixed|string
      */
     public function mime()
     {
@@ -164,7 +164,7 @@ class Image
 
     /**
      * 返回图像尺寸数组 0 - 图像宽度，1 - 图像高度
-     * @return array 图像尺寸
+     * @return mixed|array
      */
     public function size()
     {
@@ -174,7 +174,7 @@ class Image
     /**
      * 旋转图像
      * @param int $degrees 顺时针旋转的度数
-     * @return $this
+     * @return mixed|$this
      */
     public function rotate($degrees = 90)
     {
@@ -191,11 +191,11 @@ class Image
     /**
      * 翻转图像
      * @param integer $direction 翻转轴,X或者Y
-     * @return $this
+     * @return mixed|$this
      */
     public function flip($direction = self::FLIP_X)
     {
-        //原图宽度和高度
+        // 原图宽度和高度
         $w = $this->info['width'];
         $h = $this->info['height'];
         do {
@@ -230,23 +230,24 @@ class Image
      * @param  integer $width  图像保存宽度
      * @param  integer $height 图像保存高度
      *
-     * @return $this
+     * @return mixed|$this
      */
     public function crop($w, $h, $x = 0, $y = 0, $width = null, $height = null)
     {
-        //设置保存尺寸
+        // 设置保存尺寸
         empty($width) && $width   = $w;
         empty($height) && $height = $h;
         do {
-            //创建新图像
+            // 创建新图像
             $img = imagecreatetruecolor($width, $height);
             // 调整默认颜色
             $color = imagecolorallocate($img, 255, 255, 255);
             imagefill($img, 0, 0, $color);
-            //裁剪
+            // 裁剪
             imagecopyresampled($img, $this->im, 0, 0, $x, $y, $width, $height, $w, $h);
-            imagedestroy($this->im); //销毁原图
-            //设置新图像
+            // 销毁原图
+            imagedestroy($this->im); 
+            // 设置新图像
             $this->im = $img;
         } while (!empty($this->gif) && $this->gifNext());
         $this->info['width']  = (int) $width;
@@ -261,81 +262,82 @@ class Image
      * @param  integer $height 缩略图最大高度
      * @param int      $type   缩略图裁剪类型
      *
-     * @return $this
+     * @return mixed|$this
      */
     public function thumb($width, $height, $type = self::THUMB_SCALING)
     {
-        //原图宽度和高度
+        // 原图宽度和高度
         $w = $this->info['width'];
         $h = $this->info['height'];
         /* 计算缩略图生成的必要参数 */
         switch ($type) {
                 /* 等比例缩放 */
             case self::THUMB_SCALING:
-                //原图尺寸小于缩略图尺寸则不进行缩略
+                // 原图尺寸小于缩略图尺寸则不进行缩略
                 if ($w < $width && $h < $height) {
                     return $this;
                 }
-                //计算缩放比例
+                // 计算缩放比例
                 $scale = min($width / $w, $height / $h);
                 //设置缩略图的坐标及宽度和高度
                 $x      = $y      = 0;
-                $width  = $w * $scale;
-                $height = $h * $scale;
+                $width  = intval($w * $scale);
+                $height = intval($h * $scale);
                 break;
                 /* 居中裁剪 */
             case self::THUMB_CENTER:
-                //计算缩放比例
+                // 计算缩放比例
                 $scale = max($width / $w, $height / $h);
-                //设置缩略图的坐标及宽度和高度
-                $w = $width / $scale;
-                $h = $height / $scale;
+                // 设置缩略图的坐标及宽度和高度
+                $w = intval($width / $scale);
+                $h = intval($height / $scale);
                 $x = ($this->info['width'] - $w) / 2;
                 $y = ($this->info['height'] - $h) / 2;
                 break;
                 /* 左上角裁剪 */
             case self::THUMB_NORTHWEST:
-                //计算缩放比例
+                // 计算缩放比例
                 $scale = max($width / $w, $height / $h);
-                //设置缩略图的坐标及宽度和高度
+                // 设置缩略图的坐标及宽度和高度
                 $x = $y = 0;
-                $w = $width / $scale;
-                $h = $height / $scale;
+                $w = intval($width / $scale);
+                $h = intval($height / $scale);
                 break;
                 /* 右下角裁剪 */
             case self::THUMB_SOUTHEAST:
-                //计算缩放比例
+                // 计算缩放比例
                 $scale = max($width / $w, $height / $h);
-                //设置缩略图的坐标及宽度和高度
-                $w = $width / $scale;
-                $h = $height / $scale;
+                // 设置缩略图的坐标及宽度和高度
+                $w = intval($width / $scale);
+                $h = intval($height / $scale);
                 $x = $this->info['width'] - $w;
                 $y = $this->info['height'] - $h;
                 break;
                 /* 填充 */
             case self::THUMB_FILLED:
-                //计算缩放比例
+                // 计算缩放比例
                 if ($w < $width && $h < $height) {
                     $scale = 1;
                 } else {
                     $scale = min($width / $w, $height / $h);
                 }
-                //设置缩略图的坐标及宽度和高度
-                $neww = $w * $scale;
-                $newh = $h * $scale;
+                // 设置缩略图的坐标及宽度和高度
+                $neww = intval($w * $scale);
+                $newh = intval($h * $scale);
                 $x    = $this->info['width'] - $w;
                 $y    = $this->info['height'] - $h;
-                $posx = ($width - $w * $scale) / 2;
-                $posy = ($height - $h * $scale) / 2;
+                $posx = intval(($width - $w * $scale) / 2);
+                $posy = intval(($height - $h * $scale) / 2);
                 do {
-                    //创建新图像
+                    // 创建新图像
                     $img = imagecreatetruecolor($width, $height);
                     // 调整默认颜色
                     $color = imagecolorallocate($img, 255, 255, 255);
                     imagefill($img, 0, 0, $color);
-                    //裁剪
+                    // 裁剪
                     imagecopyresampled($img, $this->im, $posx, $posy, $x, $y, $neww, $newh, $w, $h);
-                    imagedestroy($this->im); //销毁原图
+                    // 销毁原图
+                    imagedestroy($this->im);
                     $this->im = $img;
                 } while (!empty($this->gif) && $this->gifNext());
                 $this->info['width']  = (int) $width;
@@ -358,22 +360,22 @@ class Image
      * @param  string $source 水印图片路径
      * @param int     $locate 水印位置
      * @param int     $alpha  透明度
-     * @return $this
+     * @return mixed|$this
      */
     public function water($source, $locate = self::WATER_SOUTHEAST, $alpha = 100)
     {
         if (!is_file($source)) {
             throw new ImageException('水印图像不存在');
         }
-        //获取水印图像信息
+        // 获取水印图像信息
         $info = getimagesize($source);
         if (false === $info || (IMAGETYPE_GIF === $info[2] && empty($info['bits']))) {
             throw new ImageException('非法水印文件');
         }
-        //创建水印图像资源
+        // 创建水印图像资源
         $fun   = 'imagecreatefrom' . image_type_to_extension($info[2], false);
         $water = $fun($source);
-        //设定水印图像的混色模式
+        // 设定水印图像的混色模式
         imagealphablending($water, true);
         /* 设定水印位置 */
         switch ($locate) {
@@ -430,7 +432,7 @@ class Image
                 }
         }
         do {
-            //添加水印
+            // 添加水印
             $src = imagecreatetruecolor($info[0], $info[1]);
             // 调整默认颜色
             $color = imagecolorallocate($src, 255, 255, 255);
@@ -438,10 +440,10 @@ class Image
             imagecopy($src, $this->im, 0, 0, $x, $y, $info[0], $info[1]);
             imagecopy($src, $water, 0, 0, 0, 0, $info[0], $info[1]);
             imagecopymerge($this->im, $src, $x, $y, 0, 0, $info[0], $info[1], $alpha);
-            //销毁零时图片资源
+            // 销毁零时图片资源
             imagedestroy($src);
         } while (!empty($this->gif) && $this->gifNext());
-        //销毁水印资源
+        // 销毁水印资源
         imagedestroy($water);
         return $this;
     }
@@ -457,7 +459,7 @@ class Image
      * @param  integer $offset 文字相对当前位置的偏移量
      * @param  integer $angle  文字倾斜角度
      *
-     * @return $this
+     * @return mixed|$this
      * @throws ImageException
      */
     public function text(
@@ -472,7 +474,7 @@ class Image
         if (!is_file($font)) {
             throw new ImageException("不存在的字体文件：{$font}");
         }
-        //获取文字信息
+        // 获取文字信息
         $info = imagettfbbox($size, $angle, $font, $text);
         $minx = min($info[0], $info[2], $info[4], $info[6]);
         $maxx = max($info[0], $info[2], $info[4], $info[6]);
@@ -563,6 +565,7 @@ class Image
 
     /**
      * 切换到GIF的下一帧并保存当前帧
+     * @return mixed
      */
     protected function gifNext()
     {
@@ -585,6 +588,7 @@ class Image
 
     /**
      * 析构方法，用于销毁图像资源
+     * @return mixed
      */
     public function __destruct()
     {
