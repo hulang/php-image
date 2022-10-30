@@ -69,7 +69,7 @@ class Encoder
         }
         $this->addHeader();
         for ($i = 0; $i < count($this->BUF); $i++) {
-            $this->addFrames($i, $GIF_dly[$i]);
+            isset($GIF_dly[$i]) && $this->addFrames($i, $GIF_dly[$i]);
         }
         $this->addFooter();
     }
