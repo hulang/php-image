@@ -6,7 +6,6 @@
     "require": {
         "php": ">=7.2.5",
         "ext-gd": "*",
-        "topthink/framework": "^6.0",
         "phpunit/phpunit": "^7|^8|^9.5"
     },
     "autoload": {
