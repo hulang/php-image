@@ -1,4 +1,4 @@
-# The ThinkPHP6 Image Package
+# The PHP Image Package
 
 ## 安装
 
