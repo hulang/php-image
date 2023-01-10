@@ -6,7 +6,6 @@
 
 #### 使用
 
-~~~
 ~~~php
 $image = \hulang\Image::open('./image.jpg');
 或者
