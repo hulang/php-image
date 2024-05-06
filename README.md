@@ -2,7 +2,9 @@
 
 #### 安装
 
-> composer require hulang/php-image
+```php
+composer require hulang/php-image
+```
 
 #### 使用
 
