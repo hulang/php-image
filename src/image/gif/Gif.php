@@ -47,7 +47,7 @@ class Gif
      * 设置或获取当前帧的数据
      *
      * @param  string $stream 二进制数据流
-     * @return mixed        获取到的数据
+     * @return mixed 获取到的数据
      */
     public function image($stream = null)
     {
@@ -71,7 +71,7 @@ class Gif
     /**
      * 编码并保存当前GIF图片
      *
-     * @param  string $pathname 图片名称
+     * @param string $pathname 图片名称
      */
     public function save($pathname)
     {
