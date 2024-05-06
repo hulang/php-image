@@ -9,13 +9,13 @@ class Gif
     /**
      * GIF帧列表
      *
-     * @var array
+     * @var mixed|array
      */
     private $frames = [];
     /**
      * 每帧等待时间列表
      *
-     * @var array
+     * @var mixed|array
      */
     private $delays = [];
 
@@ -61,7 +61,7 @@ class Gif
     /**
      * 将当前帧移动到下一帧
      *
-     * @return string 当前帧数据
+     * @return mixed|string 当前帧数据
      */
     public function nextImage()
     {
