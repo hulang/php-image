@@ -1,9 +1,8 @@
-#### The ThinkPHP 8.0.0+ Image Package
+#### The PHP 7.2+ Image Package
 
 #### 环境
 
-- php >=8.0.0
-- ThinkPHP ^8.0.0
+- php >=7.2.0
 
 ##### 安装
 
