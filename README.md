@@ -1,12 +1,12 @@
-### The ThinkPHP8 Image Package
+#### The ThinkPHP 8.0.0+ Image Package
 
-#### 安装
+##### 安装
 
 ```php
 composer require hulang/php-image
 ```
 
-#### 使用
+##### 使用
 
 ~~~php
 $image = \hulang\Image::open('./image.jpg');
