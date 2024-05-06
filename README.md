@@ -1,4 +1,4 @@
-### The PHP Image Package
+### The ThinkPHP8 Image Package
 
 #### 安装
 
