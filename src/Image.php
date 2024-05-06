@@ -57,17 +57,17 @@ class Image
         }
         // 设置图像信息
         $this->info = [
-            'width'  => $info[0],
+            'width' => $info[0],
             'height' => $info[1],
-            'type'   => image_type_to_extension($info[2], false),
-            'mime'   => $info['mime'],
+            'type' => image_type_to_extension($info[2], false),
+            'mime' => $info['mime'],
         ];
         // 打开图像
         if ('gif' == $this->info['type']) {
             $this->gif = new Gif($file->getPathname());
-            $this->im  = @imagecreatefromstring($this->gif->image());
+            $this->im = @imagecreatefromstring($this->gif->image());
         } else {
-            $fun      = "imagecreatefrom{$this->info['type']}";
+            $fun = "imagecreatefrom{$this->info['type']}";
             $this->im = @$fun($file->getPathname());
         }
         if (empty($this->im)) {
@@ -93,10 +93,10 @@ class Image
 
     /**
      * 保存图像
-     * @param string      $pathname  图像保存路径名称
-     * @param null|string $type      图像类型
-     * @param int         $quality   图像质量
-     * @param bool        $interlace 是否对JPEG类型图像设置隔行扫描
+     * @param string $pathname 图像保存路径名称
+     * @param null|string $type 图像类型
+     * @param int $quality 图像质量
+     * @param bool $interlace 是否对JPEG类型图像设置隔行扫描
      * @return mixed|$this
      */
     public function save($pathname, $type = null, $quality = 80, $interlace = true)
@@ -163,7 +163,7 @@ class Image
     }
 
     /**
-     * 返回图像尺寸数组 0 - 图像宽度，1 - 图像高度
+     * 返回图像尺寸数组 0 - 图像宽度,1 - 图像高度
      * @return mixed|array
      */
     public function size()
@@ -223,19 +223,19 @@ class Image
     /**
      * 裁剪图像
      *
-     * @param  int $w      裁剪区域宽度
-     * @param  int $h      裁剪区域高度
-     * @param  int $x      裁剪区域x坐标
-     * @param  int $y      裁剪区域y坐标
-     * @param  int $width  图像保存宽度
-     * @param  int $height 图像保存高度
+     * @param int $w 裁剪区域宽度
+     * @param int $h 裁剪区域高度
+     * @param int $x 裁剪区域x坐标
+     * @param int $y 裁剪区域y坐标
+     * @param int $width  图像保存宽度
+     * @param int $height 图像保存高度
      *
      * @return mixed|$this
      */
-    public function crop($w, $h, $x = 0, $y = 0, $width = null, $height = null)
+    public function crop($w, $h, $x = 0, $y = 0, $width = 0, $height = 0)
     {
         // 设置保存尺寸
-        empty($width) && $width   = $w;
+        empty($width) && $width = $w;
         empty($height) && $height = $h;
         do {
             // 创建新图像
@@ -258,9 +258,9 @@ class Image
     /**
      * 生成缩略图
      *
-     * @param int $width  缩略图最大宽度
+     * @param int $width 缩略图最大宽度
      * @param int $height 缩略图最大高度
-     * @param int $type   缩略图裁剪类型
+     * @param int $type 缩略图裁剪类型
      *
      * @return mixed|$this
      */
@@ -280,7 +280,7 @@ class Image
                 // 计算缩放比例
                 $scale = min($width / $w, $height / $h);
                 //设置缩略图的坐标及宽度和高度
-                $x      = $y      = 0;
+                $x = $y = 0;
                 $width  = intval($w * $scale);
                 $height = intval($h * $scale);
                 break;
@@ -324,8 +324,8 @@ class Image
                 // 设置缩略图的坐标及宽度和高度
                 $neww = intval($w * $scale);
                 $newh = intval($h * $scale);
-                $x    = $this->info['width'] - $w;
-                $y    = $this->info['height'] - $h;
+                $x = $this->info['width'] - $w;
+                $y = $this->info['height'] - $h;
                 $posx = intval(($width - $w * $scale) / 2);
                 $posy = intval(($height - $h * $scale) / 2);
                 do {
@@ -357,9 +357,9 @@ class Image
     /**
      * 添加水印
      *
-     * @param string  $source 水印图片路径
-     * @param int     $locate 水印位置
-     * @param int     $alpha  透明度
+     * @param string $source 水印图片路径
+     * @param int $locate 水印位置
+     * @param int $alpha 透明度
      * @return mixed|$this
      */
     public function water($source, $locate = self::WATER_SOUTHEAST, $alpha = 100)
@@ -451,13 +451,13 @@ class Image
     /**
      * 图像添加文字
      *
-     * @param  string  $text   添加的文字
-     * @param  string  $font   字体路径
-     * @param  int     $size   字号
-     * @param  string  $color  文字颜色
-     * @param  int     $locate 文字写入位置
-     * @param  int     $offset 文字相对当前位置的偏移量
-     * @param  int     $angle  文字倾斜角度
+     * @param string $text 添加的文字
+     * @param string $font 字体路径
+     * @param int $size 字号
+     * @param string $color 文字颜色
+     * @param int $locate 文字写入位置
+     * @param int $offset 文字相对当前位置的偏移量
+     * @param int $angle 文字倾斜角度
      *
      * @return mixed|$this
      * @throws ImageException
@@ -587,7 +587,7 @@ class Image
     }
 
     /**
-     * 析构方法，用于销毁图像资源
+     * 析构方法,用于销毁图像资源
      * @return mixed
      */
     public function __destruct()
