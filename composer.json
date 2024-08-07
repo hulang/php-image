@@ -1,12 +1,11 @@
 {
     "name": "hulang/php-image",
-    "description": "The PHP 7.2+ Image Package",
+    "description": "The PHP 8.0.0+ Image Package",
     "type": "library",
     "license": "MIT",
     "require": {
-        "php": ">=7.2.5",
-        "ext-gd": "*",
-        "phpunit/phpunit": "^7|^8|^9.5"
+        "php": ">=8.0.0",
+        "ext-gd": "*"
     },
     "autoload": {
         "psr-4": {
