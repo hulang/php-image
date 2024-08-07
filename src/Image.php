@@ -9,27 +9,9 @@ use hulang\image\gif\Gif;
 
 class Image
 {
-    /* 缩略图相关常量定义 */
-    const THUMB_SCALING   = 1; // 常量,标识缩略图等比例缩放类型
-    const THUMB_FILLED    = 2; // 常量,标识缩略图缩放后填充类型
-    const THUMB_CENTER    = 3; // 常量,标识缩略图居中裁剪类型
-    const THUMB_NORTHWEST = 4; // 常量,标识缩略图左上角裁剪类型
-    const THUMB_SOUTHEAST = 5; // 常量,标识缩略图右下角裁剪类型
-    const THUMB_FIXED     = 6; // 常量,标识缩略图固定尺寸缩放类型
-    /* 水印相关常量定义 */
-    const WATER_NORTHWEST = 1; // 常量,标识左上角水印
-    const WATER_NORTH     = 2; // 常量,标识上居中水印
-    const WATER_NORTHEAST = 3; // 常量,标识右上角水印
-    const WATER_WEST      = 4; // 常量,标识左居中水印
-    const WATER_CENTER    = 5; // 常量,标识居中水印
-    const WATER_EAST      = 6; // 常量,标识右居中水印
-    const WATER_SOUTHWEST = 7; // 常量,标识左下角水印
-    const WATER_SOUTH     = 8; // 常量,标识下居中水印
-    const WATER_SOUTHEAST = 9; // 常量,标识右下角水印
     /* 翻转相关常量定义 */
     const FLIP_X = 1; //X轴翻转
     const FLIP_Y = 2; //Y轴翻转
-
     /**
      * 图像资源对象
      *
@@ -89,6 +71,7 @@ class Image
             throw new ImageException('Failed to create image resources!');
         }
     }
+
     /**
      * 打开一个图像文件
      * 
@@ -113,6 +96,7 @@ class Image
         // 返回一个新的Image对象,用于处理图像
         return new self($file);
     }
+
     /**
      * 保存当前图像到指定路径
      * 
@@ -155,6 +139,7 @@ class Image
         // 方法结束,返回当前实例以支持链式调用
         return $this;
     }
+
     /**
      * 获取图像的宽度
      * 
@@ -168,6 +153,7 @@ class Image
     {
         return $this->info['width'];
     }
+
     /**
      * 获取图像的高度
      * 
@@ -180,6 +166,7 @@ class Image
     {
         return $this->info['height'];
     }
+
     /**
      * 获取图像类型
      * 
@@ -192,6 +179,7 @@ class Image
     {
         return $this->info['type'];
     }
+
     /**
      * 获取图像的MIME类型
      * 
@@ -204,6 +192,7 @@ class Image
     {
         return $this->info['mime'];
     }
+
     /**
      * 获取图像尺寸
      * 
@@ -217,6 +206,7 @@ class Image
         // 返回图像的宽度和高度
         return [$this->info['width'], $this->info['height']];
     }
+
     /**
      * 旋转图像
      * 
@@ -244,6 +234,7 @@ class Image
         // 返回自身,支持链式调用
         return $this;
     }
+
     /**
      * 翻转图像
      * 
@@ -289,6 +280,7 @@ class Image
         // 返回翻转后的图像对象,支持链式调用
         return $this;
     }
+
     /**
      * 裁剪图像
      * 
@@ -334,6 +326,7 @@ class Image
         // 返回图像对象,支持链式调用
         return $this;
     }
+
     /**
      * 创建缩略图
      * 
@@ -341,17 +334,18 @@ class Image
      * 
      * @param int $width 目标宽度
      * @param int $height 目标高度
-     * @param int $type 缩略图生成模式,使用类常量定义不同的模式
+     * @param int $type 缩略图生成模式
      * @return object 返回处理后的图像对象
      * @throws ImageException 如果指定的裁剪类型不受支持
      */
-    public function thumb($width, $height, $type = self::THUMB_SCALING)
+    public function thumb($width, $height, $type = 1)
     {
         // 获取原始图像的宽度和高度
         $w = $this->info['width'];
         $h = $this->info['height'];
         switch ($type) {
-            case self::THUMB_SCALING:
+            case 1:
+                // 标识缩略图等比例缩放类型
                 // 如果原始图像尺寸小于目标尺寸,则直接返回原始图像
                 if ($w < $width && $h < $height) {
                     return $this;
@@ -363,31 +357,8 @@ class Image
                 $width  = intval($w * $scale);
                 $height = intval($h * $scale);
                 break;
-            case self::THUMB_CENTER:
-                // 计算居中裁剪的缩放比例
-                $scale = max($width / $w, $height / $h);
-                // 计算裁剪区域的宽度和高度以及起始点
-                $w = intval($width / $scale);
-                $h = intval($height / $scale);
-                $x = ($this->info['width'] - $w) / 2;
-                $y = ($this->info['height'] - $h) / 2;
-                break;
-            case self::THUMB_NORTHWEST:
-                // 计算左上角裁剪的缩放比例和裁剪区域尺寸
-                $scale = max($width / $w, $height / $h);
-                $x = $y = 0;
-                $w = intval($width / $scale);
-                $h = intval($height / $scale);
-                break;
-            case self::THUMB_SOUTHEAST:
-                // 计算右下角裁剪的缩放比例和裁剪区域尺寸
-                $scale = max($width / $w, $height / $h);
-                $w = intval($width / $scale);
-                $h = intval($height / $scale);
-                $x = $this->info['width'] - $w;
-                $y = $this->info['height'] - $h;
-                break;
-            case self::THUMB_FILLED:
+            case 2:
+                // 标识缩略图缩放后填充类型
                 // 计算填充裁剪的缩放比例和目标尺寸,确保图像充满目标区域
                 if ($w < $width && $h < $height) {
                     $scale = 1;
@@ -414,9 +385,39 @@ class Image
                 $this->info['width']  = (int) $width;
                 $this->info['height'] = (int) $height;
                 return $this;
-            case self::THUMB_FIXED:
-                // 固定尺寸缩放,不做裁剪
+            case 3:
+                // 标识缩略图居中裁剪类型
+                // 计算居中裁剪的缩放比例
+                $scale = max($width / $w, $height / $h);
+                // 计算裁剪区域的宽度和高度以及起始点
+                $w = intval($width / $scale);
+                $h = intval($height / $scale);
+                $x = ($this->info['width'] - $w) / 2;
+                $y = ($this->info['height'] - $h) / 2;
+                break;
+
+            case 4:
+                // 标识缩略图左上角裁剪类型
+                // 计算左上角裁剪的缩放比例和裁剪区域尺寸
+                $scale = max($width / $w, $height / $h);
                 $x = $y = 0;
+                $w = intval($width / $scale);
+                $h = intval($height / $scale);
+                break;
+            case 5:
+                // 标识缩略图右下角裁剪类型
+                // 计算右下角裁剪的缩放比例和裁剪区域尺寸
+                $scale = max($width / $w, $height / $h);
+                $w = intval($width / $scale);
+                $h = intval($height / $scale);
+                $x = $this->info['width'] - $w;
+                $y = $this->info['height'] - $h;
+                break;
+            case 6:
+                // 标识缩略图固定尺寸缩放类型
+                // 固定尺寸缩放,不做裁剪
+                $x = 0;
+                $y = 0;
                 break;
             default:
                 // 如果指定的裁剪类型不受支持,则抛出异常
@@ -425,6 +426,7 @@ class Image
         // 执行裁剪操作
         return $this->crop($w, $h, $x, $y, $width, $height);
     }
+
     /**
      * 在图片上添加水印
      * 
@@ -432,12 +434,12 @@ class Image
      * 支持的水印位置包括东南、西南、西北、东北、中心以及上下左右的具体坐标.水印的透明度可以通过$alpha参数进行调整
      * 
      * @param string $source 水印图片的路径
-     * @param int $locate 水印的位置,可以使用类中预定义的常量或自定义数组
+     * @param int $locate 水印的位置
      * @param int $alpha 水印的透明度,取值范围0-100
      * @return ImageHandler 返回处理后的图片对象
      * @throws ImageException 如果水印图片不存在或格式不支持,将抛出异常
      */
-    public function water($source, $locate = self::WATER_SOUTHEAST, $alpha = 100)
+    public function water($source, $locate = 9, $alpha = 100)
     {
         // 检查水印图片是否存在
         if (!is_file($source)) {
@@ -456,40 +458,50 @@ class Image
         imagealphablending($water, true);
         // 根据指定的位置计算水印的坐标
         switch ($locate) {
-            case self::WATER_SOUTHEAST:
-                $x = $this->info['width'] - $info[0];
-                $y = $this->info['height'] - $info[1];
-                break;
-            case self::WATER_SOUTHWEST:
+            case 1:
+                // 左上角
                 $x = 0;
-                $y = $this->info['height'] - $info[1];
-                break;
-            case self::WATER_NORTHWEST:
-                $x = $y = 0;
-                break;
-            case self::WATER_NORTHEAST:
-                $x = $this->info['width'] - $info[0];
                 $y = 0;
                 break;
-            case self::WATER_CENTER:
-                $x = ($this->info['width'] - $info[0]) / 2;
-                $y = ($this->info['height'] - $info[1]) / 2;
-                break;
-            case self::WATER_SOUTH:
-                $x = ($this->info['width'] - $info[0]) / 2;
-                $y = $this->info['height'] - $info[1];
-                break;
-            case self::WATER_EAST:
-                $x = $this->info['width'] - $info[0];
-                $y = ($this->info['height'] - $info[1]) / 2;
-                break;
-            case self::WATER_NORTH:
+            case 2:
+                // 上居中
                 $x = ($this->info['width'] - $info[0]) / 2;
                 $y = 0;
                 break;
-            case self::WATER_WEST:
+            case 3:
+                // 右上角
+                $x = ($this->info['width'] - $info[0]);
+                $y = 0;
+                break;
+            case 4:
+                // 左居中
                 $x = 0;
                 $y = ($this->info['height'] - $info[1]) / 2;
+                break;
+            case 5:
+                // 居中
+                $x = ($this->info['width'] - $info[0]) / 2;
+                $y = ($this->info['height'] - $info[1]) / 2;
+                break;
+            case 6:
+                // 右居中
+                $x = $this->info['width'] - $info[0];
+                $y = ($this->info['height'] - $info[1]) / 2;
+                break;
+            case 7:
+                // 左下角
+                $x = 0;
+                $y = $this->info['height'] - $info[1];
+                break;
+            case 8:
+                // 下居中
+                $x = ($this->info['width'] - $info[0]) / 2;
+                $y = $this->info['height'] - $info[1];
+                break;
+            case 9:
+                // 右下角
+                $x = $this->info['width'] - $info[0];
+                $y = $this->info['height'] - $info[1];
                 break;
             default:
                 // 支持使用数组自定义水印位置
@@ -519,6 +531,7 @@ class Image
         // 返回处理后的图片对象
         return $this;
     }
+
     /**
      * 在图片上添加文本水印
      * 
@@ -532,7 +545,7 @@ class Image
      * @return self 返回自身,支持链式调用
      * @throws ImageException 如果字体文件不存在或颜色值不合法抛出异常
      */
-    public function text($text, $font, $size, $color = '#00000000', $locate = self::WATER_SOUTHEAST, $offset = 0, $angle = 0)
+    public function text($text, $font, $size, $color = '#00000000', $locate = 9, $offset = 0, $angle = 0)
     {
         // 检查字体文件是否存在,不存在则抛出异常
         if (!is_file($font)) {
@@ -551,35 +564,44 @@ class Image
         $h = $maxy - $miny;
         // 根据水印位置常量,计算文本在图片上的确切位置
         switch ($locate) {
-            case self::WATER_SOUTHEAST:
-                $x += $this->info['width'] - $w;
-                $y += $this->info['height'] - $h;
+            case 1:
+                // 左上角
                 break;
-            case self::WATER_SOUTHWEST:
-                $y += $this->info['height'] - $h;
+            case 2:
+                // 上居中
+                $x += ($this->info['width'] - $w) / 2;
                 break;
-            case self::WATER_NORTHWEST:
+            case 3:
+                // 右上角
+                $x += ($this->info['width'] - $w) - 10;
                 break;
-            case self::WATER_NORTHEAST:
-                $x += $this->info['width'] - $w;
+            case 4:
+                // 左居中
+                $y += ($this->info['height'] - $h) / 2;
                 break;
-            case self::WATER_CENTER:
+            case 5:
+                // 居中
                 $x += ($this->info['width'] - $w) / 2;
                 $y += ($this->info['height'] - $h) / 2;
                 break;
-            case self::WATER_SOUTH:
-                $x += ($this->info['width'] - $w) / 2;
-                $y += $this->info['height'] - $h;
-                break;
-            case self::WATER_EAST:
+            case 6:
+                // 右居中
                 $x += $this->info['width'] - $w;
                 $y += ($this->info['height'] - $h) / 2;
                 break;
-            case self::WATER_NORTH:
-                $x += ($this->info['width'] - $w) / 2;
+            case 7:
+                // 左下角
+                $y += $this->info['height'] - $h;
                 break;
-            case self::WATER_WEST:
-                $y += ($this->info['height'] - $h) / 2;
+            case 8:
+                // 下居中
+                $x += ($this->info['width'] - $w) / 2;
+                $y += $this->info['height'] - $h;
+                break;
+            case 9:
+                // 右下角
+                $x += ($this->info['width'] - $w) - 10;
+                $y += $this->info['height'] - $h;
                 break;
             default:
                 // 支持自定义位置数组
@@ -617,6 +639,7 @@ class Image
         // 返回自身,支持链式调用
         return $this;
     }
+
     /**
      * 获取GIF动画的下一张图片
      * 
@@ -650,6 +673,7 @@ class Image
             return false;
         }
     }
+
     /**
      * 类的析构函数
      * 
