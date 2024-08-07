@@ -1,8 +1,8 @@
-#### The PHP 7.2+ Image Package
+#### The PHP 8.0.0+ Image Package
 
 #### 环境
 
-- php >=7.2.0
+- php >=8.0.0
 
 ##### 安装
 
