@@ -12,6 +12,7 @@ class Image
     /* 翻转相关常量定义 */
     const FLIP_X = 1; //X轴翻转
     const FLIP_Y = 2; //Y轴翻转
+
     /**
      * 图像资源对象
      *
@@ -19,7 +20,7 @@ class Image
      */
     protected $im;
 
-    /** @var  mixed|Gif */
+    /** @var mixed|Gif */
     protected $gif;
 
     /**
@@ -28,6 +29,7 @@ class Image
      * @var mixed|array
      */
     protected $info;
+
     /**
      * 图像处理类的构造函数
      *
@@ -120,17 +122,17 @@ class Image
         // 根据类型选择不同的保存方式
         if ('jpeg' == $type || 'jpg' == $type) {
             // 对JPEG图像启用或禁用隔行扫描
-            imageinterlace($this->im, $interlace);
+            @imageinterlace($this->im, $interlace);
             // 保存JPEG图像,质量参数为$quality
-            imagejpeg($this->im, $pathname, $quality);
+            @imagejpeg($this->im, $pathname, $quality);
         } elseif ('gif' == $type && !empty($this->gif)) {
             // 如果是GIF格式且已加载GIF数据,则使用GIF对象的保存方法
             $this->gif->save($pathname);
         } elseif ('png' == $type) {
             // 保存PNG图像时,启用完整的alpha通道保存
-            imagesavealpha($this->im, true);
+            @imagesavealpha($this->im, true);
             // 调整PNG保存的质量,质量参数范围为0-9,根据$quality调整
-            imagepng($this->im, $pathname, min((int) ($quality / 10), 9));
+            @imagepng($this->im, $pathname, min((int) ($quality / 10), 9));
         } else {
             // 对于其他支持的图像类型,通过动态函数调用进行保存
             $fun = 'image' . $type;
@@ -257,13 +259,13 @@ class Image
             // 根据指定的翻转方向,执行相应的图像复制操作来实现翻转效果
             switch ($direction) {
                 case self::FLIP_X:
-                    // 水平翻转：将原图的每一行从下到上复制到新图像中
+                    // 水平翻转:将原图的每一行从下到上复制到新图像中
                     for ($y = 0; $y < $h; $y++) {
                         imagecopy($img, $this->im, 0, $h - $y - 1, 0, $y, $w, 1);
                     }
                     break;
                 case self::FLIP_Y:
-                    // 垂直翻转：将原图的每一列从右到左复制到新图像中
+                    // 垂直翻转:将原图的每一列从右到左复制到新图像中
                     for ($x = 0; $x < $w; $x++) {
                         imagecopy($img, $this->im, $w - $x - 1, 0, $x, 0, 1, $h);
                     }
@@ -451,83 +453,89 @@ class Image
         if (false === $info || (IMAGETYPE_GIF === $info[2] && empty($info['bits']))) {
             throw new ImageException('非法水印文件');
         }
-        // 根据水印图片的类型创建图像资源
-        $fun = 'imagecreatefrom' . image_type_to_extension($info[2], false);
-        $water = $fun($source);
-        // 启用水印图片的 alpha 混合
-        imagealphablending($water, true);
-        // 根据指定的位置计算水印的坐标
-        switch ($locate) {
-            case 1:
-                // 左上角
-                $x = 0;
-                $y = 0;
-                break;
-            case 2:
-                // 上居中
-                $x = ($this->info['width'] - $info[0]) / 2;
-                $y = 0;
-                break;
-            case 3:
-                // 右上角
-                $x = ($this->info['width'] - $info[0]);
-                $y = 0;
-                break;
-            case 4:
-                // 左居中
-                $x = 0;
-                $y = ($this->info['height'] - $info[1]) / 2;
-                break;
-            case 5:
-                // 居中
-                $x = ($this->info['width'] - $info[0]) / 2;
-                $y = ($this->info['height'] - $info[1]) / 2;
-                break;
-            case 6:
-                // 右居中
-                $x = $this->info['width'] - $info[0];
-                $y = ($this->info['height'] - $info[1]) / 2;
-                break;
-            case 7:
-                // 左下角
-                $x = 0;
-                $y = $this->info['height'] - $info[1];
-                break;
-            case 8:
-                // 下居中
-                $x = ($this->info['width'] - $info[0]) / 2;
-                $y = $this->info['height'] - $info[1];
-                break;
-            case 9:
-                // 右下角
-                $x = $this->info['width'] - $info[0];
-                $y = $this->info['height'] - $info[1];
-                break;
-            default:
-                // 支持使用数组自定义水印位置
-                if (is_array($locate)) {
-                    [$x, $y] = $locate;
-                } else {
-                    throw new ImageException('不支持的水印位置类型');
+        try {
+            // 根据水印图片的类型创建图像资源
+            $fun = 'imagecreatefrom' . image_type_to_extension($info[2], false);
+            $water = @$fun($source);
+            if ($water) {
+                // 启用水印图片的 alpha 混合
+                imagealphablending($water, true);
+                // 根据指定的位置计算水印的坐标
+                switch ($locate) {
+                    case 1:
+                        // 左上角
+                        $x = 0;
+                        $y = 0;
+                        break;
+                    case 2:
+                        // 上居中
+                        $x = ($this->info['width'] - $info[0]) / 2;
+                        $y = 0;
+                        break;
+                    case 3:
+                        // 右上角
+                        $x = ($this->info['width'] - $info[0]);
+                        $y = 0;
+                        break;
+                    case 4:
+                        // 左居中
+                        $x = 0;
+                        $y = ($this->info['height'] - $info[1]) / 2;
+                        break;
+                    case 5:
+                        // 居中
+                        $x = ($this->info['width'] - $info[0]) / 2;
+                        $y = ($this->info['height'] - $info[1]) / 2;
+                        break;
+                    case 6:
+                        // 右居中
+                        $x = $this->info['width'] - $info[0];
+                        $y = ($this->info['height'] - $info[1]) / 2;
+                        break;
+                    case 7:
+                        // 左下角
+                        $x = 0;
+                        $y = $this->info['height'] - $info[1];
+                        break;
+                    case 8:
+                        // 下居中
+                        $x = ($this->info['width'] - $info[0]) / 2;
+                        $y = $this->info['height'] - $info[1];
+                        break;
+                    case 9:
+                        // 右下角
+                        $x = $this->info['width'] - $info[0];
+                        $y = $this->info['height'] - $info[1];
+                        break;
+                    default:
+                        // 支持使用数组自定义水印位置
+                        if (is_array($locate)) {
+                            [$x, $y] = $locate;
+                        } else {
+                            throw new ImageException('不支持的水印位置类型');
+                        }
                 }
+                // 循环处理GIF动画中的每一帧
+                do {
+                    // 创建一个临时图像资源用于水印合并
+                    $src = imagecreatetruecolor($info[0], $info[1]);
+                    // 为临时图像填充白色背景
+                    $color = imagecolorallocate($src, 255, 255, 255);
+                    imagefill($src, 0, 0, $color);
+                    // 复制原图和水印到临时图像
+                    imagecopy($src, $this->im, 0, 0, $x, $y, $info[0], $info[1]);
+                    imagecopy($src, $water, 0, 0, 0, 0, $info[0], $info[1]);
+                    // 将水印合并到原图,设置透明度
+                    imagecopymerge($this->im, $src, $x, $y, 0, 0, $info[0], $info[1], $alpha);
+                    // 销毁临时图像资源
+                    imagedestroy($src);
+                } while (!empty($this->gif) && $this->gifNext());
+                // 销毁水印图像资源
+                imagedestroy($water);
+            }
+        } catch (\Exception $e) {
+            throw new ImageException($e->getMessage());
         }
-        // 循环处理GIF动画中的每一帧
-        do {
-            // 创建一个临时图像资源用于水印合并
-            $src = imagecreatetruecolor($info[0], $info[1]);
-            // 为临时图像填充白色背景
-            $color = imagecolorallocate($src, 255, 255, 255);
-            imagefill($src, 0, 0, $color);
-            // 复制原图和水印到临时图像
-            imagecopy($src, $this->im, 0, 0, $x, $y, $info[0], $info[1]);
-            imagecopy($src, $water, 0, 0, 0, 0, $info[0], $info[1]);
-            // 将水印合并到原图,设置透明度
-            imagecopymerge($this->im, $src, $x, $y, 0, 0, $info[0], $info[1], $alpha);
-            // 销毁临时图像资源
-            imagedestroy($src);
-        } while (!empty($this->gif) && $this->gifNext());
-        // 销毁水印图像资源
-        imagedestroy($water);
         // 返回处理后的图片对象
         return $this;
     }
@@ -549,7 +557,7 @@ class Image
     {
         // 检查字体文件是否存在,不存在则抛出异常
         if (!is_file($font)) {
-            throw new ImageException("不存在的字体文件：{$font}");
+            throw new ImageException("不存在的字体文件:{$font}");
         }
         // 获取文本框的四个角点坐标
         $info = imagettfbbox($size, $angle, $font, $text);
