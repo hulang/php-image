@@ -10,8 +10,8 @@ use hulang\image\gif\Gif;
 class Image
 {
     /* 翻转相关常量定义 */
-    const FLIP_X = 1; //X轴翻转
-    const FLIP_Y = 2; //Y轴翻转
+    const FLIP_X = 1; // X轴翻转
+    const FLIP_Y = 2; // Y轴翻转
 
     /**
      * 图像资源对象
@@ -102,8 +102,9 @@ class Image
     /**
      * 保存当前图像到指定路径
      * 
-     * 该方法支持保存为JPEG、GIF、PNG格式的图像.根据传入的类型参数自动选择保存方式
-     * 如果未指定类型,则根据图像的原始类型进行保存.可以设置保存的质量和是否使用隔行扫描
+     * 该方法支持保存为JPEG、GIF、PNG格式的图像
+     * 根据传入的类型参数自动选择保存方式,如果未指定类型,则根据图像的原始类型进行保存
+     * 可以设置保存的质量和是否使用隔行扫描
      * 
      * @param string $pathname 图像保存的路径和文件名
      * @param null|string $type 保存的图像类型,可以是jpeg、jpg、gif、png.如果不指定,则根据原始图像类型决定
@@ -557,7 +558,7 @@ class Image
     {
         // 检查字体文件是否存在,不存在则抛出异常
         if (!is_file($font)) {
-            throw new ImageException("不存在的字体文件:{$font}");
+            throw new ImageException(sprintf('不存在的字体文件:%s', $font));
         }
         // 获取文本框的四个角点坐标
         $info = imagettfbbox($size, $angle, $font, $text);
