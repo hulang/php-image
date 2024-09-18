@@ -10,8 +10,8 @@ use hulang\image\gif\Gif;
 class Image
 {
     /* 翻转相关常量定义 */
-    const FLIP_X = 1; // X轴翻转
-    const FLIP_Y = 2; // Y轴翻转
+    public const FLIP_X = 1; // X轴翻转
+    public const FLIP_Y = 2; // Y轴翻转
 
     /**
      * 图像资源对象
