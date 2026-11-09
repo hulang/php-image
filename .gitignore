@@ -1,0 +1,9 @@
+# 依赖目录与锁文件（库项目不提交）
+/vendor/
+/composer.lock
+
+# PHPUnit 运行缓存
+/.phpunit.result.cache
+
+# 测试运行产生的临时图片
+/tests/tmp/*

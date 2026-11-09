@@ -123,7 +123,7 @@ class Image
             throw new ImageException('image file not exist');
         }
 
-        //使用晚绑定，允许子类（如 ImageIntervention）复用同一实现
+        //使用晚绑定：子类调用 open() 时实例化的是子类自身
         return new static($file);
     }
 
