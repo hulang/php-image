@@ -1,182 +1,232 @@
 <?php
-
-declare(strict_types=1);
+// +----------------------------------------------------------------------
+// | ThinkPHP [ WE CAN DO IT JUST THINK IT ]
+// +----------------------------------------------------------------------
+// | Copyright (c) 2006-2015 http://thinkphp.cn All rights reserved.
+// +----------------------------------------------------------------------
+// | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
+// +----------------------------------------------------------------------
+// | Author: yunwuxin <448901948@qq.com>
+// +----------------------------------------------------------------------
+// | 说明：底层已切换为 Intervention Image 4.x（GD 驱动），
+// |      公共 API（常量、方法签名、链式调用）与原版完全一致。
+// +----------------------------------------------------------------------
 
 namespace hulang;
 
+use Intervention\Image\Alignment;
+use Intervention\Image\Colors\Rgb\Color;
+use Intervention\Image\Direction;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Typography\FontFactory;
 use hulang\image\Exception as ImageException;
-use hulang\image\gif\Gif;
 
+/**
+ * 图片处理类（Intervention Image 4.x 实现）
+ *
+ * 用法与原版一致：
+ * ~~~
+ * $image = \hulang\Image::open('./a.jpg');
+ * $image->thumb(200, 200)->water('./logo.png')->save('./b.jpg');
+ * ~~~
+ */
 class Image
 {
+    /* 缩略图相关常量定义 */
+    const THUMB_SCALING   = 1; //常量，标识缩略图等比例缩放类型
+    const THUMB_FILLED    = 2; //常量，标识缩略图缩放后填充类型
+    const THUMB_CENTER    = 3; //常量，标识缩略图居中裁剪类型
+    const THUMB_NORTHWEST = 4; //常量，标识缩略图左上角裁剪类型
+    const THUMB_SOUTHEAST = 5; //常量，标识缩略图右下角裁剪类型
+    const THUMB_FIXED     = 6; //常量，标识缩略图固定尺寸缩放类型
+    /* 水印相关常量定义 */
+    const WATER_NORTHWEST = 1; //常量，标识左上角水印
+    const WATER_NORTH     = 2; //常量，标识上居中水印
+    const WATER_NORTHEAST = 3; //常量，标识右上角水印
+    const WATER_WEST      = 4; //常量，标识左居中水印
+    const WATER_CENTER    = 5; //常量，标识居中水印
+    const WATER_EAST      = 6; //常量，标识右居中水印
+    const WATER_SOUTHWEST = 7; //常量，标识左下角水印
+    const WATER_SOUTH     = 8; //常量，标识下居中水印
+    const WATER_SOUTHEAST = 9; //常量，标识右下角水印
     /* 翻转相关常量定义 */
-    public const FLIP_X = 1; // X轴翻转
-    public const FLIP_Y = 2; // Y轴翻转
+    const FLIP_X = 1; //X轴翻转（上下翻转）
+    const FLIP_Y = 2; //Y轴翻转（左右翻转）
 
     /**
-     * 图像资源对象
+     * Intervention 图片对象
      *
-     * @return mixed|GdImage|false
+     * @var \Intervention\Image\Image
      */
     protected $im;
 
-    /** @var mixed|Gif */
-    protected $gif;
-
     /**
-     * 图像信息:包括 width, height, type, mime, size
+     * 图像信息，包括 width, height, type, mime, size
      *
-     * @var mixed|array
+     * @var array
      */
     protected $info;
 
     /**
-     * 图像处理类的构造函数
+     * 图片管理器（全局复用，避免重复创建驱动）
      *
-     * 本构造函数用于初始化图像处理类,它通过分析给定的图像文件,获取图像的基本信息,并根据图像类型创建相应的图像资源
-     * 如果图像文件不合法或无法创建图像资源,则会抛出异常
+     * @var ImageManager|null
+     */
+    protected static $manager;
+
+    /**
+     * 构造方法：读取图片并建立 Intervention 图片对象
      *
-     * @param \SplFileInfo $file 图像文件信息对象
-     * @throws ImageException 如果图像文件不合法或无法创建图像资源,则抛出异常
+     * @param \SplFileInfo $file 图片文件
+     * @throws ImageException
      */
     protected function __construct(\SplFileInfo $file)
     {
-        // 获取图像文件的尺寸和类型信息
+        //获取图像信息
         $info = @getimagesize($file->getPathname());
-        // 检查图像信息是否获取成功,以及对于GIF图像,检查是否是无损GIF
-        if (false === $info || (IMAGETYPE_GIF === $info[2] && empty($info['bits']))) {
+
+        //检测图像合法性
+        if (false === $info) {
             throw new ImageException('Illegal image file');
         }
-        // 初始化图像信息数组
-        $this->info = [
-            // 图像宽度
-            'width' => $info[0],
-            // 图像高度
-            'height' => $info[1],
-            // 图像类型
-            'type' => image_type_to_extension($info[2], false),
-            // 图像MIME类型
-            'mime' => $info['mime'],
-        ];
-        // 根据图像类型创建图像资源
-        if ('gif' == $this->info['type']) {
-            // 如果是GIF图像,使用Gif类处理图像数据
-            $this->gif = new Gif($file->getPathname());
-            $this->im = @imagecreatefromstring($this->gif->image());
-        } else {
-            // 对于非GIF图像,使用相应的函数创建图像资源
-            $fun = "imagecreatefrom{$this->info['type']}";
-            $this->im = @$fun($file->getPathname());
+        //部分合法 GIF（例如隔行编码的 GIF）不会返回 bits，此时再用文件头确认一次
+        if (IMAGETYPE_GIF === $info[2] && empty($info['bits'])) {
+            $head = @file_get_contents($file->getPathname(), false, null, 0, 6);
+            if ('GIF89a' !== $head && 'GIF87a' !== $head) {
+                throw new ImageException('Illegal image file');
+            }
         }
-        // 检查图像资源是否成功创建,如果失败,则抛出异常
-        if (empty($this->im)) {
+
+        //设置图像信息
+        $this->info = [
+            'width'  => $info[0],
+            'height' => $info[1],
+            'type'   => image_type_to_extension($info[2], false),
+            'mime'   => $info['mime'],
+        ];
+
+        //交给 Intervention 解码（GIF 动画会解码成多帧）
+        try {
+            $this->im = self::manager()->decodeSplFileInfo($file);
+        } catch (\Throwable $e) {
             throw new ImageException('Failed to create image resources!');
         }
     }
 
     /**
-     * 打开一个图像文件
-     * 
-     * 该方法接受一个文件路径(字符串)或一个SplFileInfo对象作为参数,用于创建一个表示图像的新对象
-     * 如果参数是字符串,它将被转换为SplFileInfo对象,以利用其文件操作的方法
-     * 如果指定的文件不存在,将抛出一个ImageException异常
-     * 
-     * @param \SplFileInfo|string $file 图像文件的SplFileInfo对象或路径字符串
-     * @return Image 返回一个新创建的Image对象
-     * @throws ImageException 如果文件不存在,则抛出异常
+     * 打开一个图片文件
+     *
+     * @param \SplFileInfo|string $file 图片文件或路径
+     * @return Image
+     * @throws ImageException
      */
     public static function open($file)
     {
-        // 如果传入的是字符串,则将其转换为SplFileInfo对象
         if (is_string($file)) {
             $file = new \SplFileInfo($file);
         }
-        // 检查文件是否存在,如果不存在则抛出异常
         if (!$file->isFile()) {
             throw new ImageException('image file not exist');
         }
-        // 返回一个新的Image对象,用于处理图像
-        return new self($file);
+
+        //使用晚绑定，允许子类（如 ImageIntervention）复用同一实现
+        return new static($file);
     }
 
     /**
-     * 保存当前图像到指定路径
-     * 
-     * 该方法支持保存为JPEG、GIF、PNG格式的图像
-     * 根据传入的类型参数自动选择保存方式,如果未指定类型,则根据图像的原始类型进行保存
-     * 可以设置保存的质量和是否使用隔行扫描
-     * 
-     * @param string $pathname 图像保存的路径和文件名
-     * @param null|string $type 保存的图像类型,可以是jpeg、jpg、gif、png.如果不指定,则根据原始图像类型决定
-     * @param int $quality 保存的质量,取值范围0-100,默认为80
-     * @param bool $interlace 是否启用隔行扫描,用于JPEG图像,默认为true
-     * @return $this 返回当前实例,支持链式调用
+     * 获取图片管理器（懒加载单例）
+     *
+     * @return ImageManager
+     */
+    protected static function manager()
+    {
+        if (null === self::$manager) {
+            self::$manager = new ImageManager(new Driver());
+        }
+
+        return self::$manager;
+    }
+
+    /**
+     * 保存图像
+     *
+     * @param string      $pathname  图像保存路径名称
+     * @param null|string $type      图像类型
+     * @param int         $quality   图像质量（JPEG / WebP 有效）
+     * @param bool        $interlace 是否对 JPEG 图像设置隔行扫描
+     * @return $this
      */
     public function save($pathname, $type = null, $quality = 80, $interlace = true)
     {
-        // 根据是否指定了类型来决定使用原始类型还是指定的类型,并将类型转换为小写
+        //自动获取图像类型
         if (is_null($type)) {
             $type = $this->info['type'];
         } else {
             $type = strtolower($type);
         }
-        // 根据类型选择不同的保存方式
-        if ('jpeg' == $type || 'jpg' == $type) {
-            // 对JPEG图像启用或禁用隔行扫描
-            @imageinterlace($this->im, $interlace);
-            // 保存JPEG图像,质量参数为$quality
-            @imagejpeg($this->im, $pathname, $quality);
-        } elseif ('gif' == $type && !empty($this->gif)) {
-            // 如果是GIF格式且已加载GIF数据,则使用GIF对象的保存方法
-            $this->gif->save($pathname);
-        } elseif ('png' == $type) {
-            // 保存PNG图像时,启用完整的alpha通道保存
-            @imagesavealpha($this->im, true);
-            // 调整PNG保存的质量,质量参数范围为0-9,根据$quality调整
-            @imagepng($this->im, $pathname, min((int) ($quality / 10), 9));
-        } else {
-            // 对于其他支持的图像类型,通过动态函数调用进行保存
-            $fun = 'image' . $type;
-            $fun($this->im, $pathname);
+        //JPEG 统一写成 jpg，Intervention 的扩展名编码器两种写法都认
+        if ('jpeg' == $type) {
+            $type = 'jpg';
         }
-        // 方法结束,返回当前实例以支持链式调用
+
+        //按不同格式准备编码参数
+        $options = [];
+        if (in_array($type, ['jpg', 'webp'], true)) {
+            $options['quality'] = (int) $quality;
+        }
+        if ('jpg' == $type) {
+            $options['progressive'] = (bool) $interlace;
+        }
+        if (in_array($type, ['png', 'gif'], true)) {
+            $options['interlaced'] = (bool) $interlace;
+        }
+
+        //编码并写入文件（GIF 动画会保留所有帧）
+        $encoded = $this->im->encodeUsingFileExtension($type, ...$options);
+        $encoded->save($pathname);
+
         return $this;
     }
 
     /**
-     * 获取图像的宽度
-     * 
-     * 该方法通过访问内部信息数组来获取图像的宽度
-     * 它不接受任何参数,并返回图像的宽度值
-     * 如果内部信息数组中没有宽度信息,则可能返回默认值或触发错误
-     * 
-     * @return mixed|int 返回图像的宽度.如果无法获取宽度,则可能返回默认值或触发错误
+     * http 输出图片
+     *
+     * @return void
+     */
+    public function output()
+    {
+        $type = $this->info['type'];
+        $type = 'jpeg' == $type ? 'jpg' : $type;
+        header("content-type: image/{$type}");
+        echo $this->im->encodeUsingFileExtension($type)->toString();
+        exit;
+    }
+
+    /**
+     * 返回图像宽度
+     *
+     * @return int 图像宽度
      */
     public function width()
     {
-        return $this->info['width'];
+        return $this->im->width();
     }
 
     /**
-     * 获取图像的高度
-     * 
-     * 该方法通过访问内部信息数组来获取图像的高度.此方法适用于各种图像格式
-     * 提供了一个统一的方式来获取图像的高度,而不需要关心具体的图像格式
-     * 
-     * @return mixed|int 返回图像的高度.如果无法获取高度,可能返回一个错误值或异常
+     * 返回图像高度
+     *
+     * @return int 图像高度
      */
     public function height()
     {
-        return $this->info['height'];
+        return $this->im->height();
     }
 
     /**
-     * 获取图像类型
-     * 
-     * 该方法用于返回图像的类型,基于之前获取的图像信息
-     * 支持的图像类型可能包括JPEG、PNG、GIF等
-     * 
-     * @return string 图像类型,以字符串形式表示,例如"jpeg"、"png"等
+     * 返回图像类型
+     *
+     * @return string 图像类型
      */
     public function type()
     {
@@ -184,12 +234,9 @@ class Image
     }
 
     /**
-     * 获取图像的MIME类型
-     * 
-     * 该方法用于返回图像文件的MIME类型.MIME类型是一种标准,用于标识文件类型和编码方式
-     * 对于图像文件,MIME类型可以是如image/jpeg、image/png等,它们用于指示图像的格式
-     * 
-     * @return mixed|string 返回图像的MIME类型.如果无法确定MIME类型,可能返回mixed类型的值
+     * 返回图像 MIME 类型
+     *
+     * @return string 图像 MIME 类型
      */
     public function mime()
     {
@@ -197,440 +244,375 @@ class Image
     }
 
     /**
-     * 获取图像尺寸
-     * 
-     * 该方法返回一个包含图像宽度和高度的数组
-     * 它提供了对图像尺寸的快速访问,而无需直接处理内部信息数组
-     * 
-     * @return array 返回一个包含图像宽度和高度的数组,索引0对应宽度,索引1对应高度
+     * 返回图像尺寸数组 0 - 图像宽度，1 - 图像高度
+     *
+     * @return array 图像尺寸
      */
     public function size()
     {
-        // 返回图像的宽度和高度
-        return [$this->info['width'], $this->info['height']];
+        return [$this->im->width(), $this->im->height()];
     }
 
     /**
      * 旋转图像
-     * 
-     * 该方法用于旋转当前加载的图像.如果处理的是GIF动画,则会对每一帧进行旋转
-     * 旋转是通过PHP的imagerotate函数实现的,并且会更新图像的宽度和高度信息
-     * 
-     * @param int $degrees 旋转的角度.默认为90度
-     * @return $this 返回自身,允许链式调用
+     *
+     * @param int $degrees 顺时针旋转的度数
+     * @return $this
      */
     public function rotate($degrees = 90)
     {
-        // 不断旋转图像直到处理完所有GIF动画的帧
-        do {
-            // 旋转图像,分配透明色以保持透明效果
-            $img = imagerotate($this->im, -$degrees, imagecolorallocatealpha($this->im, 0, 0, 0, 127));
-            // 销毁原图像资源,以释放内存
-            imagedestroy($this->im);
-            // 更新图像资源为旋转后的图像
-            $this->im = $img;
-            // 如果是GIF动画,检查是否还有下一帧
-        } while (!empty($this->gif) && $this->gifNext());
-        // 更新图像的宽度和高度信息
-        $this->info['width']  = imagesx($this->im);
-        $this->info['height'] = imagesy($this->im);
-        // 返回自身,支持链式调用
+        //Intervention 对动画 GIF 会自动逐帧处理
+        $this->im->rotate((float) $degrees);
+
         return $this;
     }
 
     /**
      * 翻转图像
-     * 
-     * 该方法用于翻转当前图像,支持水平(X轴)和垂直(Y轴)两种翻转方式
-     * 通过指定不同的翻转方向,实现图像的镜像效果
-     * 
-     * @param int $direction 翻转方向,使用类常量定义,默认为水平翻转
-     *                      可选值为FLIP_X(水平翻转)和FLIP_Y(垂直翻转)
-     * @return $this 返回翻转后的图像对象,支持链式调用
-     * @throws ImageException 如果指定的翻转方向不是支持的类型,则抛出异常
+     *
+     * @param integer $direction 翻转轴，X 轴（上下）或 Y 轴（左右）
+     * @return $this
+     * @throws ImageException
      */
     public function flip($direction = self::FLIP_X)
     {
-        // 获取原图的宽度和高度
-        $w = $this->info['width'];
-        $h = $this->info['height'];
-        do {
-            // 创建一个新的真彩色图像对象,用于存放翻转后的图像
-            $img = imagecreatetruecolor($w, $h);
-            // 根据指定的翻转方向,执行相应的图像复制操作来实现翻转效果
-            switch ($direction) {
-                case self::FLIP_X:
-                    // 水平翻转:将原图的每一行从下到上复制到新图像中
-                    for ($y = 0; $y < $h; $y++) {
-                        imagecopy($img, $this->im, 0, $h - $y - 1, 0, $y, $w, 1);
-                    }
-                    break;
-                case self::FLIP_Y:
-                    // 垂直翻转:将原图的每一列从右到左复制到新图像中
-                    for ($x = 0; $x < $w; $x++) {
-                        imagecopy($img, $this->im, $w - $x - 1, 0, $x, 0, 1, $h);
-                    }
-                    break;
-                default:
-                    // 如果指定的翻转方向不是支持的类型,则抛出异常
-                    throw new ImageException('不支持的翻转类型');
-            }
-            // 销毁原图像对象,用新图像对象替换
-            imagedestroy($this->im);
-            $this->im = $img;
-            // 如果当前处理的是GIF动画,则继续处理下一帧
-        } while (!empty($this->gif) && $this->gifNext());
-        // 返回翻转后的图像对象,支持链式调用
+        switch ($direction) {
+            case self::FLIP_X:
+                //X 轴翻转即上下翻转
+                $this->im->flip(Direction::VERTICAL);
+                break;
+            case self::FLIP_Y:
+                //Y 轴翻转即左右翻转
+                $this->im->flip(Direction::HORIZONTAL);
+                break;
+            default:
+                throw new ImageException('不支持的翻转类型');
+        }
+
         return $this;
     }
 
     /**
      * 裁剪图像
-     * 
-     * 本函数用于从当前图像中裁剪出指定区域,并可选地重新设置图像的尺寸
-     * 裁剪是根据指定的宽度、高度、以及左上角的坐标来进行的
-     * 如果没有指定新图像的宽度和高度,则它们将默认为裁剪区域的宽度和高度
-     * 对于GIF动画,函数将处理每一帧的裁剪
-     * 
-     * @param int $w 裁剪区域的宽度
-     * @param int $h 裁剪区域的高度
-     * @param int $x 裁剪区域的左上角x坐标,默认为0(左边缘)
-     * @param int $y 裁剪区域的左上角y坐标,默认为0(上边缘)
-     * @param int $width 新图像的宽度,默认为0,即裁剪区域的宽度
-     * @param int $height 新图像的高度,默认为0,即裁剪区域的高度
-     * 
-     * @return $this 返回处理后的图像对象,支持链式调用
+     *
+     * @param  integer $w      裁剪区域宽度
+     * @param  integer $h      裁剪区域高度
+     * @param  integer $x      裁剪区域 x 坐标
+     * @param  integer $y      裁剪区域 y 坐标
+     * @param  integer $width  图像保存宽度
+     * @param  integer $height 图像保存高度
+     *
+     * @return $this
      */
-    public function crop($w, $h, $x = 0, $y = 0, $width = 0, $height = 0)
+    public function crop($w, $h, $x = 0, $y = 0, $width = null, $height = null)
     {
-        // 如果没有指定新图像的宽度和高度,则使用裁剪区域的尺寸
-        if (empty($width)) {
-            $width = $w;
+        //设置保存尺寸
+        empty($width) && $width   = $w;
+        empty($height) && $height = $h;
+        $width  = (int) $width;
+        $height = (int) $height;
+
+        //先从原图裁出 w×h 的区域（越界部分用白色填充，与原实现一致）
+        $this->im = $this->im->crop((int) $w, (int) $h, (int) $x, (int) $y, '#ffffff');
+
+        //裁剪区域与保存尺寸不一致时再缩放
+        if ($width != (int) $w || $height != (int) $h) {
+            $this->im = $this->im->resize($width, $height);
         }
-        if (empty($height)) {
-            $height = $h;
-        }
-        do {
-            // 创建一个真彩色图像,用于存储裁剪后的结果
-            $img = imagecreatetruecolor($width, $height);
-            // 设置图像的默认背景颜色为白色
-            $color = imagecolorallocate($img, 255, 255, 255);
-            imagefill($img, 0, 0, $color);
-            // 将原图像的指定区域裁剪并调整大小到新图像上
-            imagecopyresampled($img, $this->im, 0, 0, $x, $y, $width, $height, $w, $h);
-            // 销毁原图像资源,以释放内存
-            imagedestroy($this->im);
-            // 将裁剪并调整大小后的图像设置为新的原图像
-            $this->im = $img;
-        } while (!empty($this->gif) && $this->gifNext()); // 如果是GIF动画,则处理下一帧
-        // 更新图像信息,包括宽度和高度
-        $this->info['width']  = (int) $width;
-        $this->info['height'] = (int) $height;
-        // 返回图像对象,支持链式调用
+
         return $this;
     }
 
     /**
-     * 创建缩略图
-     * 
-     * 根据指定的宽度、高度和类型,生成目标图像的缩略图.支持不同的裁剪和缩放模式
-     * 
-     * @param int $width 目标宽度
-     * @param int $height 目标高度
-     * @param int $type 缩略图生成模式
-     * @return object 返回处理后的图像对象
-     * @throws ImageException 如果指定的裁剪类型不受支持
+     * 生成缩略图
+     *
+     * @param  integer $width  缩略图最大宽度
+     * @param  integer $height 缩略图最大高度
+     * @param int      $type   缩略图裁剪类型
+     *
+     * @return $this
+     * @throws ImageException
      */
-    public function thumb($width, $height, $type = 1)
+    public function thumb($width, $height, $type = self::THUMB_SCALING)
     {
-        // 获取原始图像的宽度和高度
-        $w = $this->info['width'];
-        $h = $this->info['height'];
+        $width  = (int) $width;
+        $height = (int) $height;
+        //原图宽度和高度
+        $w = $this->im->width();
+        $h = $this->im->height();
+
         switch ($type) {
-            case 1:
-                // 标识缩略图等比例缩放类型
-                // 如果原始图像尺寸小于目标尺寸,则直接返回原始图像
+            /* 等比例缩放 */
+            case self::THUMB_SCALING:
+                //原图尺寸小于缩略图尺寸则不进行缩略
                 if ($w < $width && $h < $height) {
                     return $this;
                 }
-                // 计算缩放比例
+                //按原版算法自行计算尺寸：取最小比例后向下取整，
+                //不使用 Intervention 的 scale()，否则其四舍五入会造成 1px 偏差
                 $scale = min($width / $w, $height / $h);
-                // 初始化裁剪的起始点和目标尺寸
-                $x = $y = 0;
-                $width  = intval($w * $scale);
-                $height = intval($h * $scale);
+                $newW  = (int) ($w * $scale);
+                $newH  = (int) ($h * $scale);
+                $this->im = $this->im->resize(max(1, $newW), max(1, $newH));
                 break;
-            case 2:
-                // 标识缩略图缩放后填充类型
-                // 计算填充裁剪的缩放比例和目标尺寸,确保图像充满目标区域
-                if ($w < $width && $h < $height) {
-                    $scale = 1;
-                } else {
-                    $scale = min($width / $w, $height / $h);
-                }
-                $neww = intval($w * $scale);
-                $newh = intval($h * $scale);
-                // 计算裁剪区域的起始点和目标尺寸
-                $x = $this->info['width'] - $w;
-                $y = $this->info['height'] - $h;
-                $posx = intval(($width - $neww) / 2);
-                $posy = intval(($height - $newh) / 2);
-                // 重复处理GIF的每一帧
-                do {
-                    $img = imagecreatetruecolor($width, $height);
-                    $color = imagecolorallocate($img, 255, 255, 255);
-                    imagefill($img, 0, 0, $color);
-                    imagecopyresampled($img, $this->im, $posx, $posy, $x, $y, $neww, $newh, $w, $h);
-                    imagedestroy($this->im);
-                    $this->im = $img;
-                } while (!empty($this->gif) && $this->gifNext());
-                // 更新图像信息
-                $this->info['width']  = (int) $width;
-                $this->info['height'] = (int) $height;
-                return $this;
-            case 3:
-                // 标识缩略图居中裁剪类型
-                // 计算居中裁剪的缩放比例
-                $scale = max($width / $w, $height / $h);
-                // 计算裁剪区域的宽度和高度以及起始点
-                $w = intval($width / $scale);
-                $h = intval($height / $scale);
-                $x = ($this->info['width'] - $w) / 2;
-                $y = ($this->info['height'] - $h) / 2;
+            /* 居中裁剪 */
+            case self::THUMB_CENTER:
+                $this->im = $this->im->cover($width, $height, Alignment::CENTER);
                 break;
-
-            case 4:
-                // 标识缩略图左上角裁剪类型
-                // 计算左上角裁剪的缩放比例和裁剪区域尺寸
-                $scale = max($width / $w, $height / $h);
-                $x = $y = 0;
-                $w = intval($width / $scale);
-                $h = intval($height / $scale);
+            /* 左上角裁剪 */
+            case self::THUMB_NORTHWEST:
+                $this->im = $this->im->cover($width, $height, Alignment::TOP_LEFT);
                 break;
-            case 5:
-                // 标识缩略图右下角裁剪类型
-                // 计算右下角裁剪的缩放比例和裁剪区域尺寸
-                $scale = max($width / $w, $height / $h);
-                $w = intval($width / $scale);
-                $h = intval($height / $scale);
-                $x = $this->info['width'] - $w;
-                $y = $this->info['height'] - $h;
+            /* 右下角裁剪 */
+            case self::THUMB_SOUTHEAST:
+                $this->im = $this->im->cover($width, $height, Alignment::BOTTOM_RIGHT);
                 break;
-            case 6:
-                // 标识缩略图固定尺寸缩放类型
-                // 固定尺寸缩放,不做裁剪
-                $x = 0;
-                $y = 0;
+            /* 填充 */
+            case self::THUMB_FILLED:
+                //按比例缩放后居中放在白底画布上，小图不放大
+                $this->im = $this->im->containDown($width, $height, '#ffffff', Alignment::CENTER);
+                break;
+            /* 固定 */
+            case self::THUMB_FIXED:
+                $this->im = $this->im->resize($width, $height);
                 break;
             default:
-                // 如果指定的裁剪类型不受支持,则抛出异常
                 throw new ImageException('不支持的缩略图裁剪类型');
         }
-        // 执行裁剪操作
-        return $this->crop($w, $h, $x, $y, $width, $height);
-    }
 
-    /**
-     * 在图片上添加水印
-     * 
-     * 本函数用于在当前处理的图片上添加水印图片.水印的位置可以通过预定义的常量或自定义数组进行指定
-     * 支持的水印位置包括东南、西南、西北、东北、中心以及上下左右的具体坐标.水印的透明度可以通过$alpha参数进行调整
-     * 
-     * @param string $source 水印图片的路径
-     * @param int $locate 水印的位置
-     * @param int $alpha 水印的透明度,取值范围0-100
-     * @return ImageHandler 返回处理后的图片对象
-     * @throws ImageException 如果水印图片不存在或格式不支持,将抛出异常
-     */
-    public function water($source, $locate = 9, $alpha = 100)
-    {
-        // 检查水印图片是否存在
-        if (!is_file($source)) {
-            throw new ImageException('水印图像不存在');
-        }
-        // 获取水印图片的尺寸信息
-        $info = getimagesize($source);
-        // 检查水印图片是否合法
-        if (false === $info || (IMAGETYPE_GIF === $info[2] && empty($info['bits']))) {
-            throw new ImageException('非法水印文件');
-        }
-        try {
-            // 根据水印图片的类型创建图像资源
-            $fun = 'imagecreatefrom' . image_type_to_extension($info[2], false);
-            $water = @$fun($source);
-            if ($water) {
-                // 启用水印图片的 alpha 混合
-                imagealphablending($water, true);
-                // 根据指定的位置计算水印的坐标
-                switch ($locate) {
-                    case 1:
-                        // 左上角
-                        $x = 0;
-                        $y = 0;
-                        break;
-                    case 2:
-                        // 上居中
-                        $x = ($this->info['width'] - $info[0]) / 2;
-                        $y = 0;
-                        break;
-                    case 3:
-                        // 右上角
-                        $x = ($this->info['width'] - $info[0]);
-                        $y = 0;
-                        break;
-                    case 4:
-                        // 左居中
-                        $x = 0;
-                        $y = ($this->info['height'] - $info[1]) / 2;
-                        break;
-                    case 5:
-                        // 居中
-                        $x = ($this->info['width'] - $info[0]) / 2;
-                        $y = ($this->info['height'] - $info[1]) / 2;
-                        break;
-                    case 6:
-                        // 右居中
-                        $x = $this->info['width'] - $info[0];
-                        $y = ($this->info['height'] - $info[1]) / 2;
-                        break;
-                    case 7:
-                        // 左下角
-                        $x = 0;
-                        $y = $this->info['height'] - $info[1];
-                        break;
-                    case 8:
-                        // 下居中
-                        $x = ($this->info['width'] - $info[0]) / 2;
-                        $y = $this->info['height'] - $info[1];
-                        break;
-                    case 9:
-                        // 右下角
-                        $x = $this->info['width'] - $info[0];
-                        $y = $this->info['height'] - $info[1];
-                        break;
-                    default:
-                        // 支持使用数组自定义水印位置
-                        if (is_array($locate)) {
-                            [$x, $y] = $locate;
-                        } else {
-                            throw new ImageException('不支持的水印位置类型');
-                        }
-                }
-                // 循环处理GIF动画中的每一帧
-                do {
-                    // 创建一个临时图像资源用于水印合并
-                    $src = imagecreatetruecolor($info[0], $info[1]);
-                    // 为临时图像填充白色背景
-                    $color = imagecolorallocate($src, 255, 255, 255);
-                    imagefill($src, 0, 0, $color);
-                    // 复制原图和水印到临时图像
-                    imagecopy($src, $this->im, 0, 0, $x, $y, $info[0], $info[1]);
-                    imagecopy($src, $water, 0, 0, 0, 0, $info[0], $info[1]);
-                    // 将水印合并到原图,设置透明度
-                    imagecopymerge($this->im, $src, $x, $y, 0, 0, $info[0], $info[1], $alpha);
-                    // 销毁临时图像资源
-                    imagedestroy($src);
-                } while (!empty($this->gif) && $this->gifNext());
-                // 销毁水印图像资源
-                imagedestroy($water);
-            }
-        } catch (\Exception $e) {
-            throw new ImageException($e->getMessage());
-        }
-        // 返回处理后的图片对象
         return $this;
     }
 
     /**
-     * 在图片上添加文本水印
-     * 
-     * @param string $text 水印文本内容
-     * @param string $font 水印文本所使用的字体文件路径
-     * @param int $size 水印文本的字体大小
-     * @param string|array $color 水印文本的颜色,可以是十六进制颜色字符串或数组
-     * @param int $locate 水印的位置,使用类常量定义,也可以是自定义的数组
-     * @param int|array $offset 水印的偏移量,可以是单个值或包含x、y的数组
-     * @param int $angle 水印文本的旋转角度
-     * @return self 返回自身,支持链式调用
-     * @throws ImageException 如果字体文件不存在或颜色值不合法抛出异常
+     * 添加水印
+     *
+     * @param string    $source 水印图片路径
+     * @param int|array $locate 水印位置
+     * @param int       $alpha  透明度（0-100，100 为完全不透明）
+     * @return $this
+     * @throws ImageException
      */
-    public function text($text, $font, $size, $color = '#00000000', $locate = 9, $offset = 0, $angle = 0)
+    public function water($source, $locate = self::WATER_SOUTHEAST, $alpha = 100)
     {
-        // 检查字体文件是否存在,不存在则抛出异常
-        if (!is_file($font)) {
-            throw new ImageException(sprintf('不存在的字体文件:%s', $font));
+        if (!is_file($source)) {
+            throw new ImageException('水印图像不存在');
         }
-        // 获取文本框的四个角点坐标
-        $info = imagettfbbox($size, $angle, $font, $text);
-        // 计算文本的宽度和高度
+        //获取水印图像信息
+        $info = getimagesize($source);
+        if (false === $info) {
+            throw new ImageException('非法水印文件');
+        }
+        //部分合法 GIF 不返回 bits，用文件头兜底判断
+        if (IMAGETYPE_GIF === $info[2] && empty($info['bits'])) {
+            $head = @file_get_contents($source, false, null, 0, 6);
+            if ('GIF89a' !== $head && 'GIF87a' !== $head) {
+                throw new ImageException('非法水印文件');
+            }
+        }
+        //解码水印图片
+        try {
+            $water = self::manager()->decodePath($source);
+        } catch (\Throwable $e) {
+            throw new ImageException('非法水印文件');
+        }
+        $ww = $water->width();
+        $wh = $water->height();
+
+        //当前图片宽高
+        $w = $this->im->width();
+        $h = $this->im->height();
+
+        /* 设定水印位置 */
+        switch ($locate) {
+            /* 右下角水印 */
+            case self::WATER_SOUTHEAST:
+                $x = $w - $ww;
+                $y = $h - $wh;
+                break;
+            /* 左下角水印 */
+            case self::WATER_SOUTHWEST:
+                $x = 0;
+                $y = $h - $wh;
+                break;
+            /* 左上角水印 */
+            case self::WATER_NORTHWEST:
+                $x = $y = 0;
+                break;
+            /* 右上角水印 */
+            case self::WATER_NORTHEAST:
+                $x = $w - $ww;
+                $y = 0;
+                break;
+            /* 居中水印 */
+            case self::WATER_CENTER:
+                $x = (int) (($w - $ww) / 2);
+                $y = (int) (($h - $wh) / 2);
+                break;
+            /* 下居中水印 */
+            case self::WATER_SOUTH:
+                $x = (int) (($w - $ww) / 2);
+                $y = $h - $wh;
+                break;
+            /* 右居中水印 */
+            case self::WATER_EAST:
+                $x = $w - $ww;
+                $y = (int) (($h - $wh) / 2);
+                break;
+            /* 上居中水印 */
+            case self::WATER_NORTH:
+                $x = (int) (($w - $ww) / 2);
+                $y = 0;
+                break;
+            /* 左居中水印 */
+            case self::WATER_WEST:
+                $x = 0;
+                $y = (int) (($h - $wh) / 2);
+                break;
+            default:
+                /* 自定义水印坐标 */
+                if (is_array($locate)) {
+                    list($x, $y) = $locate;
+                } else {
+                    throw new ImageException('不支持的水印位置类型');
+                }
+        }
+
+        //透明度换算：原参数 100 为不透明，Intervention 用 1 表示不透明
+        $transparency = max(0, min(1, ((int) $alpha) / 100));
+
+        //叠加水印（动画 GIF 会逐帧叠加）
+        $this->im->insert($water, (int) $x, (int) $y, Alignment::TOP_LEFT, $transparency);
+
+        return $this;
+    }
+
+    /**
+     * 图像添加文字
+     *
+     * @param string        $text   添加的文字
+     * @param string        $font   字体路径
+     * @param integer       $size   字号
+     * @param string        $color  文字颜色（#RRGGBBAA，AA 为 GD 的 alpha 0-127）
+     * @param int|array     $locate 文字写入位置
+     * @param integer|array $offset 文字相对当前位置的偏移量
+     * @param integer       $angle  文字倾斜角度
+     *
+     * @return $this
+     * @throws ImageException
+     */
+    public function text($text, $font, $size, $color = '#00000000',
+        $locate = self::WATER_SOUTHEAST, $offset = 0, $angle = 0) {
+
+        if (!is_file($font)) {
+            throw new ImageException("不存在的字体文件：{$font}");
+        }
+        //GD 在部分环境（Windows 中文目录）无法直接打开字体文件，统一解析为可用路径
+        $font = $this->resolveFontPath($font);
+
+        //获取文字外框信息
+        $info = @imagettfbbox((int) $size, (int) $angle, $font, $text);
+        if (false === $info) {
+            throw new ImageException("无法读取字体文件：{$font}");
+        }
         $minx = min($info[0], $info[2], $info[4], $info[6]);
         $maxx = max($info[0], $info[2], $info[4], $info[6]);
         $miny = min($info[1], $info[3], $info[5], $info[7]);
         $maxy = max($info[1], $info[3], $info[5], $info[7]);
+
+        /* 计算文字初始坐标和尺寸 */
         $x = $minx;
         $y = abs($miny);
         $w = $maxx - $minx;
         $h = $maxy - $miny;
-        // 根据水印位置常量,计算文本在图片上的确切位置
+
+        //当前图片宽高
+        $imgW = $this->im->width();
+        $imgH = $this->im->height();
+
+        /* 设定文字位置 */
         switch ($locate) {
-            case 1:
-                // 左上角
+            /* 右下角文字 */
+            case self::WATER_SOUTHEAST:
+                $x += $imgW - $w;
+                $y += $imgH - $h;
                 break;
-            case 2:
-                // 上居中
-                $x += ($this->info['width'] - $w) / 2;
+            /* 左下角文字 */
+            case self::WATER_SOUTHWEST:
+                $y += $imgH - $h;
                 break;
-            case 3:
-                // 右上角
-                $x += ($this->info['width'] - $w) - 10;
+            /* 左上角文字 */
+            case self::WATER_NORTHWEST:
+                //起始坐标即为左上角坐标，无需调整
                 break;
-            case 4:
-                // 左居中
-                $y += ($this->info['height'] - $h) / 2;
+            /* 右上角文字 */
+            case self::WATER_NORTHEAST:
+                $x += $imgW - $w;
                 break;
-            case 5:
-                // 居中
-                $x += ($this->info['width'] - $w) / 2;
-                $y += ($this->info['height'] - $h) / 2;
+            /* 居中文字 */
+            case self::WATER_CENTER:
+                $x += (int) (($imgW - $w) / 2);
+                $y += (int) (($imgH - $h) / 2);
                 break;
-            case 6:
-                // 右居中
-                $x += $this->info['width'] - $w;
-                $y += ($this->info['height'] - $h) / 2;
+            /* 下居中文字 */
+            case self::WATER_SOUTH:
+                $x += (int) (($imgW - $w) / 2);
+                $y += $imgH - $h;
                 break;
-            case 7:
-                // 左下角
-                $y += $this->info['height'] - $h;
+            /* 右居中文字 */
+            case self::WATER_EAST:
+                $x += $imgW - $w;
+                $y += (int) (($imgH - $h) / 2);
                 break;
-            case 8:
-                // 下居中
-                $x += ($this->info['width'] - $w) / 2;
-                $y += $this->info['height'] - $h;
+            /* 上居中文字 */
+            case self::WATER_NORTH:
+                $x += (int) (($imgW - $w) / 2);
                 break;
-            case 9:
-                // 右下角
-                $x += ($this->info['width'] - $w) - 10;
-                $y += $this->info['height'] - $h;
+            /* 左居中文字 */
+            case self::WATER_WEST:
+                $y += (int) (($imgH - $h) / 2);
                 break;
             default:
-                // 支持自定义位置数组
+                /* 自定义文字坐标 */
                 if (is_array($locate)) {
-                    [$posx, $posy] = $locate;
-                    $x += $posx;
-                    $y += $posy;
+                    list($posx, $posy) = $locate;
+                    $x += (int) $posx;
+                    $y += (int) $posy;
                 } else {
                     throw new ImageException('不支持的文字位置类型');
                 }
         }
-        // 处理偏移量,支持单个值和数组形式
+
+        /* 设置偏移量 */
         if (is_array($offset)) {
-            $offset = array_map('intval', $offset);
-            [$ox, $oy] = $offset;
+            $offset        = array_map('intval', $offset);
+            list($ox, $oy) = $offset;
         } else {
             $offset = intval($offset);
-            $ox = $oy = $offset;
+            $ox     = $oy     = $offset;
         }
-        // 处理颜色值,支持十六进制字符串和数组形式
+
+        /* 图片黑白检测：根据文字区域的亮度自动选择黑字或白字 */
+        if ("auto" == $color) {
+            $pickX = max(1, intval(mb_strwidth($text) * ($size / 1.6)));
+            $pickY = max(1, (int) $size);
+
+            $brightness = 0;
+            $pixels     = 0;
+            for ($i = (int) ($x + $ox); $i < $pickX + $x + $ox; $i++) {
+                for ($j = (int) ($y + $oy - $pickY); $j < $y + $oy; $j++) {
+                    //只统计图像范围内的像素，避免越界读取
+                    if ($i < 0 || $j < 0 || $i >= $imgW || $j >= $imgH) {
+                        continue;
+                    }
+                    $brightness += $this->getBrightnessOfPixel($i, $j);
+                    $pixels++;
+                }
+            }
+
+            $color = $pixels > 0 && $brightness / $pixels > 127 ? '#00000000' : '#ffffffff';
+        }
+
+        /* 设置颜色 */
         if (is_string($color) && 0 === strpos($color, '#')) {
             $color = str_split(substr($color, 1), 2);
             $color = array_map('hexdec', $color);
@@ -640,60 +622,97 @@ class Image
         } elseif (!is_array($color)) {
             throw new ImageException('错误的颜色值');
         }
-        // 循环绘制文本,针对GIF动图的每一帧
-        do {
-            $col = imagecolorallocatealpha($this->im, $color[0], $color[1], $color[2], $color[3]);
-            imagettftext($this->im, $size, $angle, $x + $ox, $y + $oy, $col, $font, $text);
-        } while (!empty($this->gif) && $this->gifNext());
-        // 返回自身,支持链式调用
+
+        //转成 Intervention 可识别的颜色对象
+        $colorObject = $this->colorObject($color);
+
+        //写入文字（动画 GIF 会逐帧写入）
+        $this->im->text($text, (int) ($x + $ox), (int) ($y + $oy), function (FontFactory $fontFactory) use ($font, $size, $colorObject, $angle) {
+            $fontFactory->file($font)
+                ->size((int) $size)
+                ->color($colorObject)
+                ->angle((int) $angle)
+                ->align('left', 'top');
+        });
+
         return $this;
     }
 
     /**
-     * 获取GIF动画的下一张图片
-     * 
-     * 该方法用于处理GIF动画,提取并生成下一张图片.如果存在下一张图片
-     * 则销毁当前图片资源,创建并返回下一张图片资源.如果不存在下一张图片
-     * 则重新加载第一张图片,准备重新播放动画
-     * 
-     * @return bool|resource 返回下一张图片资源,如果不存在下一张图片则返回false
+     * 把 [r, g, b, alpha] 颜色数组转成 Intervention 颜色对象
+     *
+     * @param array $color GD 颜色数组，alpha 取值 0（不透明）~ 127（全透明）
+     * @return \Intervention\Image\Colors\Rgb\Color
      */
-    protected function gifNext()
+    private function colorObject(array $color)
     {
-        // 开启输出缓冲,以捕获生成的GIF图像数据
-        ob_start();
-        ob_implicit_flush(false);
-        // 将当前图片资源转换为GIF格式并捕获输出
-        imagegif($this->im);
-        $img = ob_get_clean();
-        // 将捕获的GIF图像数据传递给GIF处理类
-        $this->gif->image($img);
-        // 获取GIF的下一张图片数据
-        $next = $this->gif->nextImage();
-        if ($next) {
-            // 如果存在下一张图片,销毁当前图片资源,创建新的图片资源
-            imagedestroy($this->im);
-            $this->im = imagecreatefromstring($next);
-            return $next;
-        } else {
-            // 如果没有下一张图片,销毁当前图片资源,重新加载第一张图片
-            imagedestroy($this->im);
-            $this->im = imagecreatefromstring($this->gif->image());
-            return false;
-        }
+        //GD 的 alpha 数值越大越透明，rgba 的不透明度正好相反
+        $opacity = 1 - ((int) $color[3] / 127);
+
+        return new Color((int) $color[0], (int) $color[1], (int) $color[2], (float) $opacity);
     }
 
     /**
-     * 类的析构函数
-     * 
-     * 该函数在对象销毁时自动调用.其目的是销毁类中保存的图像资源
-     * 以释放系统资源.只有在图像资源存在且未被销毁时,才调用imagedestroy函数
-     * 
-     * @see imagedestroy() 用于销毁图像资源的PHP内置函数
+     * 解析字体路径，保证 GD 能正常打开
+     *
+     * Windows 版 GD 无法打开含中文字符的路径，遇到这种情况时把字体复制到
+     * 系统临时目录（纯英文路径）再使用，避免 imagettfbbox / imagettftext 报错。
+     *
+     * @param string $font 字体文件路径
+     * @return string 可用的字体文件路径
+     * @throws ImageException
+     */
+    private function resolveFontPath($font)
+    {
+        //路径全部是可打印 ASCII 字符时直接使用
+        if (!preg_match('/[^\x20-\x7E]/', $font)) {
+            return $font;
+        }
+        //使用文件特征生成固定的临时文件名，避免重复复制
+        $ext = pathinfo($font, PATHINFO_EXTENSION);
+        $ext = $ext ? $ext : 'ttf';
+        $tmp = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'think-image-font-' .
+            md5($font . '|' . @filesize($font) . '|' . @filemtime($font)) . '.' . $ext;
+        if (!is_file($tmp)) {
+            if (!@copy($font, $tmp)) {
+                throw new ImageException("字体文件复制失败：{$font}");
+            }
+        }
+
+        return $tmp;
+    }
+
+    /**
+     * 获取图片指定像素点的亮度值
+     *
+     * @param int $x 横坐标
+     * @param int $y 纵坐标
+     * @return int 亮度（0-255）
+     */
+    private function getBrightnessOfPixel($x, $y)
+    {
+        try {
+            $hex = $this->im->colorAt((int) $x, (int) $y)->toHex();
+        } catch (\Throwable $e) {
+            return 0;
+        }
+        //取前 6 位作为 RGB
+        $hex = str_pad(substr($hex, 0, 6), 6, '0');
+        $r   = hexdec(substr($hex, 0, 2));
+        $g   = hexdec(substr($hex, 2, 2));
+        $b   = hexdec(substr($hex, 4, 2));
+
+        //红绿蓝能量不同，亮度不同，对应系数也不同（参考 https://www.w3.org/TR/AERT/#color-contrast）
+        return intval($r * 0.299 + $g * 0.587 + $b * 0.114);
+    }
+
+    /**
+     * 析构方法
+     *
+     * Intervention 的图片对象由 PHP 垃圾回收管理，这里无需手动释放资源。
      */
     public function __destruct()
     {
-        // 检查图像资源是否存在,如果存在,则销毁它
-        empty($this->im) || imagedestroy($this->im);
+        //无需释放 GD 资源
     }
 }
