@@ -1,4 +1,4 @@
-# The PHP 8.0.0+ Image Package
+# The PHP 8.3.0+ Image Package
 
 ## 环境要求
 
