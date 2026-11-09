@@ -21,7 +21,7 @@
 
 ## 安装
 
-> composer require topthink/think-image
+> composer require hulang/php-image
 
 ## 使用
 
