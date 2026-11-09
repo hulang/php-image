@@ -1,6 +1,6 @@
 {
     "name": "hulang/php-image",
-    "description": "The PHP 8.0.0+ Image Package (PHP 8 compatible, powered by Intervention Image 4.x)",
+    "description": "The PHP 8.3.0+ Image Package (PHP 8.3 compatible, powered by Intervention Image 4.x)",
     "license": "Apache-2.0",
     "require": {
         "php": ">=8.3",
