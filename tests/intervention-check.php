@@ -217,5 +217,54 @@ check(
     \hulang\ImageIntervention::WATER_CENTER === ImageKit::WATER_CENTER
 );
 
+/* 19. 新增效果类方法：摆正 / 去边 / 锐化 / 模糊 / 灰度 */
+$dst = $out . 'kit-orient.jpg';
+ImageKit::orient($src, $dst);
+$got = ImageKit::size($dst);
+check('orient() 无 EXIF 时保持原尺寸', 800 === $got[0] && 600 === $got[1], "{$got[0]}x{$got[1]}");
+
+//先造一张白底红块的图，用来验证 trim 能不能把白边裁掉
+$trimSrc = $out . 'trim-src.png';
+$canvas = imagecreatetruecolor(200, 200);
+$whiteColor = imagecolorallocate($canvas, 255, 255, 255);
+imagefill($canvas, 0, 0, $whiteColor);
+$redColor = imagecolorallocate($canvas, 255, 0, 0);
+imagefilledrectangle($canvas, 40, 40, 159, 159, $redColor);
+imagepng($canvas, $trimSrc);
+imagedestroy($canvas);
+
+$dst = $out . 'kit-trim.png';
+ImageKit::trim($trimSrc, $dst, 0);
+$got = ImageKit::size($dst);
+check('trim() 裁掉四周纯色边', 120 === $got[0] && 120 === $got[1], "{$got[0]}x{$got[1]}");
+
+$dst = $out . 'kit-sharpen.jpg';
+ImageKit::sharpen($src, $dst, 10);
+check('sharpen() 生成文件且尺寸不变', is_file($dst) && [800, 600] === ImageKit::size($dst));
+
+$dst = $out . 'kit-blur.jpg';
+ImageKit::blur($src, $dst, 5);
+check('blur() 生成文件且尺寸不变', is_file($dst) && [800, 600] === ImageKit::size($dst));
+
+//灰度：先确认源图该点是彩色，再看输出是否 R=G=B
+$srcPixel = imagecreatefromjpeg($src);
+$srcRgb = imagecolorat($srcPixel, 400, 300);
+$srcR = ($srcRgb >> 16) & 0xFF;
+$srcG = ($srcRgb >> 8) & 0xFF;
+$srcB = $srcRgb & 0xFF;
+imagedestroy($srcPixel);
+check('灰度测试前提：源图该点为彩色', $srcR !== $srcG || $srcG !== $srcB, "rgb({$srcR},{$srcG},{$srcB})");
+
+$dst = $out . 'kit-gray.png';
+ImageKit::grayscale($src, $dst);
+$grayPixel = imagecreatefrompng($dst);
+$grayRgb = imagecolorat($grayPixel, 400, 300);
+$grayR = ($grayRgb >> 16) & 0xFF;
+$grayG = ($grayRgb >> 8) & 0xFF;
+$grayB = $grayRgb & 0xFF;
+imagedestroy($grayPixel);
+check('grayscale() 输出像素 R=G=B', $grayR === $grayG && $grayG === $grayB, "rgb({$grayR},{$grayG},{$grayB})");
+
 echo PHP_EOL . "通过 {$pass} 项，失败 {$fail} 项" . PHP_EOL;
+
 exit($fail > 0 ? 1 : 0);

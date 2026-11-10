@@ -19,6 +19,7 @@
 - 6 个 `THUMB_*`（`SCALING / FILLED / CENTER / NORTHWEST / SOUTHEAST / FIXED`）、9 个 `WATER_*`、`FLIP_X` / `FLIP_Y` 常量全部保留，集中定义在 `src/ImageConstants.php` 的 trait 中，`Image` 与 `ImageKit` 共用同一份值；
 - `save($pathname, $type = null, $quality = 80, $interlace = true)`、`crop($w, $h, $x = 0, $y = 0, $width = null, $height = null)`、`thumb($width, $height, $type = self::THUMB_SCALING)`、`water($source, $locate = self::WATER_SOUTHEAST, $alpha = 100)`、`text($text, $font, $size, $color = '#00000000', $locate = self::WATER_SOUTHEAST, $offset = 0, $angle = 0)` 签名不变；
 - `output() / width() / height() / type() / mime() / size() / rotate() / flip() / __destruct()` 同样可用；
+- 新增 `orient() / trim() / sharpen() / blur() / grayscale()` 五个常用图像处理方法，链式与静态两种用法都支持；
 - `open()` 接受 `\SplFileInfo` 或字符串路径，异常类型仍是 `hulang\image\Exception`。
 
 ## 安装
@@ -68,6 +69,31 @@ $width = \hulang\ImageKit::width('./image.jpg');
 
 返回值是目标文件路径，可以直接拿去拼 URL 或入库。
 
+常用的图像修正方法同样是一步到位：
+
+~~~
+//手机竖拍照片按 EXIF 方向转正
+\hulang\ImageKit::orient('./a.jpg', './b.jpg');
+
+//扫描件、截图自动去掉四周纯色白边
+\hulang\ImageKit::trim('./a.jpg', './b.jpg');
+
+//缩图后补清晰度、轻微模糊、转黑白（Image 上可直接链式调用）
+\hulang\ImageKit::sharpen('./a.jpg', './b.jpg', 10);
+\hulang\ImageKit::blur('./a.jpg', './b.jpg', 5);
+\hulang\ImageKit::grayscale('./a.jpg', './b.jpg');
+~~~
+
+链式写法同样可用：
+
+~~~
+\hulang\Image::open('./a.jpg')
+    ->orient()
+    ->trim()
+    ->sharpen(10)
+    ->save('./b.jpg');
+~~~
+
 ## 与旧版（手写 GD 实现）的差异
 
 | 项目 | 说明 |
@@ -105,5 +131,5 @@ php vendor/phpunit/phpunit/phpunit
 
 ~~~
 php tests/php8-check.php          # 13 项基础自检
-php tests/intervention-check.php  # 43 项 ImageKit 静态 API 自检
+php tests/intervention-check.php  # 49 项 ImageKit 静态 API 自检
 ~~~

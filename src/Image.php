@@ -268,6 +268,85 @@ class Image
     }
 
     /**
+     * 按 EXIF 方向信息自动摆正图像
+     *
+     * 手机竖拍或翻转拍摄的照片，像素本身可能是横着的，靠 EXIF 里的 Orientation
+     * 标记告诉看图软件该怎么转。上传后如果直接缩放，方向信息常常会丢，
+     * 结果就是"照片歪了"，这里在读 EXIF 后直接把像素转正。
+     *
+     * @return $this
+     */
+    public function orient()
+    {
+        //Intervention 内部会读取 EXIF Orientation，再执行对应的旋转或翻转
+        $this->im = $this->im->orient();
+
+        return $this;
+    }
+
+    /**
+     * 自动裁剪掉图像四周的纯色边
+     *
+     * 常用于扫描件、手机截图、白底商品图：四周那圈没用的大边可以直接去掉，
+     * 让主体填满画面。
+     *
+     * @param integer $tolerance 容差，0 表示严格按四角像素颜色向内匹配
+     * @return $this
+     */
+    public function trim($tolerance = 0)
+    {
+        //从四角向内收缩，容差越大判定越宽松
+        $this->im = $this->im->trim((int) $tolerance);
+
+        return $this;
+    }
+
+    /**
+     * 锐化图像
+     *
+     * 缩图后画面会偏软，加一点锐化能明显提清晰度；数值过大容易出白边和噪点。
+     *
+     * @param integer $level 锐化强度 0-100
+     * @return $this
+     */
+    public function sharpen($level = 10)
+    {
+        //10 左右适合网页缩略图，超过 30 通常会显得脏
+        $this->im = $this->im->sharpen((int) $level);
+
+        return $this;
+    }
+
+    /**
+     * 模糊图像
+     *
+     * 可用于打码、背景虚化、做占位图。
+     *
+     * @param integer $level 模糊强度 0-100
+     * @return $this
+     */
+    public function blur($level = 5)
+    {
+        //数值越大越糊，5 只是轻微柔化
+        $this->im = $this->im->blur((int) $level);
+
+        return $this;
+    }
+
+    /**
+     * 转为灰度图
+     *
+     * @return $this
+     */
+    public function grayscale()
+    {
+        //按亮度权重换算成灰度
+        $this->im = $this->im->grayscale();
+
+        return $this;
+    }
+
+    /**
      * 裁剪图像
      *
      * @param  integer $w      裁剪区域宽度

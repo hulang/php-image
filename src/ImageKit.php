@@ -191,6 +191,129 @@ class ImageKit
     }
 
     /**
+     * 按 EXIF 方向自动摆正图像并保存
+     *
+     * @param string $source 源图片路径
+     * @param string $save   处理后的保存路径
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function orient($source, $save)
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //按 EXIF 的 Orientation 标记把像素转正
+        $image->orient();
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 自动裁掉四周纯色边并保存
+     *
+     * @param string  $source    源图片路径
+     * @param string  $save      处理后的保存路径
+     * @param integer $tolerance 容差，0 表示严格按四角像素颜色匹配
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function trim($source, $save, $tolerance = 0)
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //从四角向内收缩，去掉纯色边
+        $image->trim($tolerance);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 锐化图像并保存
+     *
+     * @param string  $source 源图片路径
+     * @param string  $save   处理后的保存路径
+     * @param integer $level  锐化强度 0-100
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function sharpen($source, $save, $level = 10)
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //按强度锐化
+        $image->sharpen($level);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 模糊图像并保存
+     *
+     * @param string  $source 源图片路径
+     * @param string  $save   处理后的保存路径
+     * @param integer $level  模糊强度 0-100
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function blur($source, $save, $level = 5)
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //按强度模糊
+        $image->blur($level);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 转为灰度图并保存
+     *
+     * @param string $source 源图片路径
+     * @param string $save   处理后的保存路径
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function grayscale($source, $save)
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //转成灰度
+        $image->grayscale();
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
      * 仅保存（可用于格式转换或重新压缩，不做任何画面处理）
      *
      * @param string      $source    源图片路径
