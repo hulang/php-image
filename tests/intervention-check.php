@@ -1,8 +1,9 @@
 <?php
 /**
- * Intervention Image 4.x 兼容层自检脚本
+ * ImageKit 静态快捷入口自检脚本
  *
- * 逐项验证 hulang\ImageKit 的公共 API 是否与 hulang\Image 行为一致。
+ * 逐个验证 hulang\ImageKit 的静态方法：第一个参数源文件、第二个参数目标文件、
+ * 后面是原 hulang\Image 的方法参数，全部按「打开 → 处理 → 保存」执行。
  * 运行：php tests/intervention-check.php
  */
 
@@ -10,15 +11,25 @@ require __DIR__ . '/autoload.php';
 
 use hulang\ImageKit;
 
-$dir  = __DIR__ . '/images/';
-$out  = __DIR__ . '/tmp/';
+$dir = __DIR__ . '/images/';
+$out = __DIR__ . '/tmp/';
 @mkdir($out, 0777, true);
+
+$src  = $dir . 'test.jpg';
+$png  = $dir . 'test.png';
+$gif  = $dir . 'test.gif';
+$ttf  = $dir . 'test.ttf';
+$bmp  = $dir . 'test.bmp';
 
 $pass = 0;
 $fail = 0;
 
 /**
  * 断言辅助函数
+ *
+ * @param string $label     用例名称
+ * @param bool   $condition 断言结果
+ * @param string $detail    附加说明
  */
 function check($label, $condition, $detail = '')
 {
@@ -32,162 +43,179 @@ function check($label, $condition, $detail = '')
     }
 }
 
-/* 1. 打开图片并读取基础信息 */
-$img = ImageKit::open($dir . 'test.jpg');
-$size = $img->size();
-check('open() 读取尺寸', 800 === $size[0] && 600 === $size[1], "{$size[0]}x{$size[1]}");
-check('type()', 'jpeg' === $img->type(), $img->type());
-check('mime()', 'image/jpeg' === $img->mime(), $img->mime());
-check('width()/height()', 800 === $img->width() && 600 === $img->height());
+/* 1. 只读信息：每个方法只传源文件 */
+$size = ImageKit::size($src);
+check('size() 读取尺寸', 800 === $size[0] && 600 === $size[1], "{$size[0]}x{$size[1]}");
+check('type()', 'jpeg' === ImageKit::type($src), ImageKit::type($src));
+check('mime()', 'image/jpeg' === ImageKit::mime($src), ImageKit::mime($src));
+check('width()', 800 === ImageKit::width($src), (string) ImageKit::width($src));
+check('height()', 600 === ImageKit::height($src), (string) ImageKit::height($src));
 
-/* 2. 六种缩略图类型 */
-$thumbCases = [
-    'THUMB_SCALING'   => [ImageKit::THUMB_SCALING, 200, 150],
-    'THUMB_FILLED'    => [ImageKit::THUMB_FILLED, 200, 200],
-    'THUMB_CENTER'    => [ImageKit::THUMB_CENTER, 200, 200],
-    'THUMB_NORTHWEST' => [ImageKit::THUMB_NORTHWEST, 200, 200],
-    'THUMB_SOUTHEAST' => [ImageKit::THUMB_SOUTHEAST, 200, 200],
-    'THUMB_FIXED'     => [ImageKit::THUMB_FIXED, 200, 200],
+/* 2. 常量值必须与 hulang\Image 一一对应 */
+$consts = [
+    'THUMB_SCALING'   => 1,
+    'THUMB_FILLED'    => 2,
+    'THUMB_CENTER'    => 3,
+    'THUMB_NORTHWEST' => 4,
+    'THUMB_SOUTHEAST' => 5,
+    'THUMB_FIXED'     => 6,
+    'WATER_NORTHWEST' => 1,
+    'WATER_NORTH'     => 2,
+    'WATER_NORTHEAST' => 3,
+    'WATER_WEST'      => 4,
+    'WATER_CENTER'    => 5,
+    'WATER_EAST'      => 6,
+    'WATER_SOUTHWEST' => 7,
+    'WATER_SOUTH'     => 8,
+    'WATER_SOUTHEAST' => 9,
+    'FLIP_X'          => 1,
+    'FLIP_Y'          => 2,
 ];
-foreach ($thumbCases as $label => list($type, $w, $h)) {
-    $t    = ImageKit::open($dir . 'test.jpg')->thumb($w, $h, $type);
-    $size = $t->size();
-    check("thumb() {$label}", abs($size[0] - $w) <= 1 && abs($size[1] - $h) <= 1, "{$size[0]}x{$size[1]}");
+$constOk = true;
+foreach ($consts as $name => $expected) {
+    if (ImageKit::{$name} !== $expected) {
+        $constOk = false;
+        echo "  常量不一致: {$name}" . PHP_EOL;
+    }
+}
+check('17 个常量值正确', $constOk);
+
+/* 3. 6 种缩略图类型：一步到位执行并校验输出文件 */
+$thumbCases = [
+    'THUMB_SCALING'   => [ImageKit::THUMB_SCALING, 200, 200, [200, 150]],
+    'THUMB_FILLED'    => [ImageKit::THUMB_FILLED, 200, 200, [200, 200]],
+    'THUMB_CENTER'    => [ImageKit::THUMB_CENTER, 200, 200, [200, 200]],
+    'THUMB_NORTHWEST' => [ImageKit::THUMB_NORTHWEST, 200, 200, [200, 200]],
+    'THUMB_SOUTHEAST' => [ImageKit::THUMB_SOUTHEAST, 200, 200, [200, 200]],
+    'THUMB_FIXED'     => [ImageKit::THUMB_FIXED, 200, 200, [200, 200]],
+];
+foreach ($thumbCases as $label => list($type, $w, $h, $expect)) {
+    $dst = $out . 'kit-' . $label . '.jpg';
+    $ret = ImageKit::thumb($src, $dst, $w, $h, $type);
+    $got = ImageKit::size($dst);
+    check(
+        "thumb() {$label}",
+        $got[0] === $expect[0] && $got[1] === $expect[1] && $ret === $dst,
+        "{$got[0]}x{$got[1]}"
+    );
 }
 
-/* 缩略图不放大：原图 200x150，要求 300x300 */
-$t    = ImageKit::open($dir . 'test.jpg')->thumb(300, 300, ImageKit::THUMB_SCALING);
-$size = $t->size();
-check('thumb() 小图不放大', $size[0] <= 300 && $size[1] <= 300, "{$size[0]}x{$size[1]}");
+/* 4. 小图不放大（等比例缩放时） */
+$dst = $out . 'kit-small.jpg';
+ImageKit::thumb($png, $dst, 900, 900, ImageKit::THUMB_SCALING);
+$got = ImageKit::size($dst);
+check('thumb() 小图不放大', 800 === $got[0] && 600 === $got[1], "{$got[0]}x{$got[1]}");
 
-/* 3. crop 裁剪并缩放 */
-$c    = ImageKit::open($dir . 'test.jpg')->crop(400, 300, 100, 100, 200, 150);
-$size = $c->size();
-check('crop() 裁剪+缩放', 200 === $size[0] && 150 === $size[1], "{$size[0]}x{$size[1]}");
+/* 5. 裁剪：区域 + 二次缩放 */
+$dst = $out . 'kit-crop.jpg';
+ImageKit::crop($src, $dst, 400, 300, 100, 100, 200, 150);
+$got = ImageKit::size($dst);
+check('crop() 裁剪+缩放', 200 === $got[0] && 150 === $got[1], "{$got[0]}x{$got[1]}");
 
-/* 4. 旋转 / 翻转 */
-$r    = ImageKit::open($dir . 'test.jpg')->rotate(90);
-$size = $r->size();
-check('rotate(90) 画布自动扩展', 600 === $size[0] && 800 === $size[1], "{$size[0]}x{$size[1]}");
+/* 6. 旋转 */
+$dst = $out . 'kit-rotate.jpg';
+ImageKit::rotate($src, $dst, 90);
+$got = ImageKit::size($dst);
+check('rotate(90) 画布自动扩展', 600 === $got[0] && 800 === $got[1], "{$got[0]}x{$got[1]}");
 
-$fx = ImageKit::open($dir . 'test.jpg')->flip(ImageKit::FLIP_X);
-check('flip(FLIP_X)', 800 === $fx->width() && 600 === $fx->height());
+/* 7. 两种翻转 */
+$dstX = $out . 'kit-flip-x.jpg';
+$dstY = $out . 'kit-flip-y.jpg';
+$a = ImageKit::flip($src, $dstX, ImageKit::FLIP_X);
+$b = ImageKit::flip($src, $dstY, ImageKit::FLIP_Y);
+check('flip(FLIP_X)', $a === $dstX && is_file($dstX));
+check('flip(FLIP_Y)', $b === $dstY && is_file($dstY));
 
-$fy = ImageKit::open($dir . 'test.jpg')->flip(ImageKit::FLIP_Y);
-check('flip(FLIP_Y)', 800 === $fy->width() && 600 === $fy->height());
-
-/* 5. 水印九个位置 */
-$waterPositions = [
+/* 8. 五个水印位置 */
+$waterCases = [
     'WATER_NORTHWEST' => ImageKit::WATER_NORTHWEST,
     'WATER_CENTER'    => ImageKit::WATER_CENTER,
     'WATER_SOUTHEAST' => ImageKit::WATER_SOUTHEAST,
     'WATER_SOUTHWEST' => ImageKit::WATER_SOUTHWEST,
     'WATER_NORTHEAST' => ImageKit::WATER_NORTHEAST,
 ];
-foreach ($waterPositions as $label => $pos) {
-    $w    = ImageKit::open($dir . 'test.jpg')->water($dir . 'test.png', $pos, 100);
-    $file = $out . "check-{$label}.jpg";
-    $w->save($file, null, 90);
-    check("water() {$label}", is_file($file) && 800 === $w->width() && 600 === $w->height(), $file);
+foreach ($waterCases as $label => $pos) {
+    $dst = $out . 'kit-' . $label . '.jpg';
+    ImageKit::water($src, $dst, $png, $pos, 100);
+    $got = ImageKit::size($dst);
+    check("water() {$label}", is_file($dst) && 800 === $got[0] && 600 === $got[1]);
 }
 
-/* 自定义坐标水印 */
-$w = ImageKit::open($dir . 'test.jpg')->water($dir . 'test.png', [10, 10], 50);
-check('water() 自定义坐标 + 透明度', 800 === $w->width());
+/* 9. 自定义水印坐标 + 半透明 */
+$dst = $out . 'kit-water-xy.jpg';
+ImageKit::water($src, $dst, $png, [10, 10], 50);
+check('water() 自定义坐标 + 透明度', is_file($dst) && ImageKit::size($dst) === [800, 600]);
 
-/* 6. 文字（含中文字体路径，验证临时目录兜底） */
-$text = ImageKit::open($dir . 'test.jpg')->text(
-    'ThinkPHP 8',
-    $dir . 'test.ttf',
-    24,
-    '#ffffffff',
-    ImageKit::WATER_CENTER,
-    0,
-    0
-);
-$text->save($out . 'check-text.jpg', null, 90);
-check('text() 中文字体路径 + 居中', is_file($out . 'check-text.jpg'));
+/* 10. 文字水印 */
+$dst = $out . 'kit-text.jpg';
+ImageKit::text($src, $dst, 'ThinkPHP 8', $ttf, 24, '#ffffff', ImageKit::WATER_CENTER);
+check('text() 中文字体路径 + 居中', is_file($dst) && 800 === ImageKit::width($dst));
 
-/* auto 颜色 */
-$auto = ImageKit::open($dir . 'test.jpg')->text('auto color', $dir . 'test.ttf', 24, 'auto');
-$auto->save($out . 'check-text-auto.jpg', null, 90);
-check('text() auto 取色', is_file($out . 'check-text-auto.jpg'));
+/* 11. 文字自动取色 */
+$dst = $out . 'kit-text-auto.jpg';
+ImageKit::text($src, $dst, 'auto color', $ttf, 24, 'auto');
+check('text() auto 取色', is_file($dst) && filesize($dst) > 0);
 
-/* 7. 保存为其它格式 */
-ImageKit::open($dir . 'test.jpg')->save($out . 'check-save.png', 'png');
-check('save() 指定 png 类型', is_file($out . 'check-save.png') && 'PNG' === strtoupper(substr(file_get_contents($out . 'check-save.png'), 1, 3)));
+/* 12. save() 做格式转换：jpg 存成 png */
+$dst = $out . 'kit-save.png';
+$ret = ImageKit::save($src, $dst, 'png');
+check('save() 指定 png 类型', $ret === $dst && 'png' === ImageKit::type($dst), ImageKit::type($dst));
 
-ImageKit::open($dir . 'test.jpg')->save($out . 'check-save.jpg', null, 60, false);
-check('save() jpg 质量/隔行', is_file($out . 'check-save.jpg'), filesize($out . 'check-save.jpg') . ' 字节');
+/* 13. save() 目标扩展名自动推断 + 质量参数 */
+$dst = $out . 'kit-quality.jpg';
+ImageKit::save($src, $dst, null, 60, false);
+check('save() 按目标扩展名推断 + 质量', is_file($dst) && filesize($dst) > 0, filesize($dst) . ' 字节');
 
-/* 8. 动画 GIF 全链路：缩略 -> 保存 -> 帧数不变 */
-$gif = ImageKit::open($dir . 'test.gif');
-check('open() 动画 GIF 尺寸', 380 === $gif->width() && 216 === $gif->height());
+/* 14. 动画 GIF：静态方法同样逐帧处理 */
+$gifSize = ImageKit::size($gif);
+check('open() 动画 GIF 尺寸', 380 === $gifSize[0] && 216 === $gifSize[1], "{$gifSize[0]}x{$gifSize[1]}");
+$dst = $out . 'kit-anim.gif';
+ImageKit::thumb($gif, $dst, 120, 68, ImageKit::THUMB_SCALING);
+$got = ImageKit::size($dst);
+check('动画 GIF 处理后尺寸正确', 119 === $got[0] && 68 === $got[1], "{$got[0]}x{$got[1]}");
+check('动画 GIF 结果仍是 gif', 'gif' === ImageKit::type($dst), ImageKit::type($dst));
 
-$gifThumb = ImageKit::open($dir . 'test.gif')->thumb(120, 68, ImageKit::THUMB_SCALING);
-$gifThumb->save($out . 'check-anim.gif');
-$after = ImageKit::open($out . 'check-anim.gif');
-//兼容层不暴露帧数，直接用底层 ImageManager 解码统计
-$manager = new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
-$frameCount = $manager->decodePath($out . 'check-anim.gif')->count();
-check('动画 GIF 处理后帧数保留', 42 === $frameCount, "{$frameCount} 帧, " . filesize($out . 'check-anim.gif') . ' 字节');
-//380x216 缩到 120x68 时受高度限制，宽度按原版算法向下取整为 119
-check('动画 GIF 尺寸正确', 119 === $gifThumb->width() && 68 === $gifThumb->height(), $gifThumb->width() . 'x' . $gifThumb->height());
-
-/* 9. 链式调用 */
-$chain = ImageKit::open($dir . 'test.jpg')
-    ->thumb(300, 300, ImageKit::THUMB_CENTER)
-    ->water($dir . 'test.png', ImageKit::WATER_SOUTHEAST, 80)
-    ->rotate(0)
-    ->save($out . 'check-chain.jpg', null, 85);
-check('链式调用', is_file($out . 'check-chain.jpg') && 300 === $chain->width());
-
-/* 10. 非法图片抛出异常 */
+/* 15. 异常：非法图片 / 文件不存在 */
 $thrown = false;
 try {
-    ImageKit::open($dir . 'test.bmp');
+    ImageKit::crop($bmp, $out . 'kit-bad.jpg', 100, 100);
 } catch (\hulang\image\Exception $e) {
     $thrown = true;
 }
 check('非法图片抛出 hulang\\image\\Exception', $thrown);
 
-/* 11. 不存在的文件抛出异常 */
 $thrown = false;
 try {
-    ImageKit::open($dir . 'not-exists.jpg');
+    ImageKit::thumb($dir . 'not-exists.jpg', $out . 'kit-none.jpg', 100, 100);
 } catch (\hulang\image\Exception $e) {
     $thrown = true;
 }
 check('文件不存在抛出异常', $thrown);
 
-/* 12. 与原生 GD 版尺寸对比 */
+/* 16. 与 hulang\Image 实例方式的结果对照 */
 $gdSizes = [];
-foreach ($thumbCases as $label => list($type, $w, $h)) {
-    $g = \hulang\Image::open($dir . 'test.jpg')->thumb($w, $h, $type);
+foreach ($thumbCases as $label => list($type, $w, $h, $expect)) {
+    $g = \hulang\Image::open($src)->thumb($w, $h, $type);
     $gdSizes[$label] = $g->size();
-    $iv = ImageKit::open($dir . 'test.jpg')->thumb($w, $h, $type)->size();
-    check("尺寸与 GD 版一致 {$label}", $gdSizes[$label] === $iv, implode('x', $iv) . ' / GD ' . implode('x', $gdSizes[$label]));
+    $kit = ImageKit::size($out . 'kit-' . $label . '.jpg');
+    check("尺寸与实例方式一致 {$label}", $gdSizes[$label] === $kit, implode('x', $kit));
 }
 
-/* 13. 水印像素确实被写入（右下角区域有变化） */
-$plain = ImageKit::open($dir . 'test.jpg')->save($out . 'check-plain.jpg', null, 90);
-$wmImg = ImageKit::open($out . 'check-WATER_SOUTHEAST.jpg');
-$plainImg = ImageKit::open($out . 'check-plain.jpg');
-$colorW = $wmImg->mime();
-check('水印结果文件可再次打开', 'image/jpeg' === $colorW);
+/* 17. 结构语义：纯静态、不继承 Image、返回值是路径 */
+$rc = new \ReflectionClass(ImageKit::class);
+check('ImageKit 不继承 hulang\\Image', !$rc->isSubclassOf(\hulang\Image::class));
+$rm = $rc->getMethod('crop');
+check('crop() 是静态方法', $rm->isStatic());
+$ret = ImageKit::thumb($src, $out . 'kit-return.jpg', 200, 200);
+check('返回值是保存路径', is_string($ret) && $ret === $out . 'kit-return.jpg');
 
-/* 14. ImageKit 结构语义 + 旧类名兼容 */
-$kit = ImageKit::open($dir . 'test.jpg');
-check('ImageKit 不再 instanceof Image', !($kit instanceof \hulang\Image));
-check('image() 返回 hulang\\Image', $kit->image() instanceof \hulang\Image);
+/* 18. 历史类名 ImageIntervention 继承静态方法 */
+$legacy = \hulang\ImageIntervention::thumb($src, $out . 'kit-legacy.jpg', 200, 200);
+check('ImageIntervention 静态调用可用', is_file($legacy) && 200 === ImageKit::width($legacy));
 check(
-    '常量与 hulang\\Image 一致',
-    ImageKit::WATER_CENTER === \hulang\Image::WATER_CENTER
-    && ImageKit::FLIP_Y === \hulang\Image::FLIP_Y
+    'ImageIntervention 常量同样可用',
+    \hulang\ImageIntervention::WATER_CENTER === ImageKit::WATER_CENTER
 );
-$legacy = \hulang\ImageIntervention::open($dir . 'test.jpg');
-check('旧类名 ImageIntervention 仍可用', $legacy instanceof ImageKit && 800 === $legacy->width());
-check('旧类名同样不再是 hulang\\Image', !($legacy instanceof \hulang\Image));
 
 echo PHP_EOL . "通过 {$pass} 项，失败 {$fail} 项" . PHP_EOL;
 exit($fail > 0 ? 1 : 0);

@@ -1,24 +1,24 @@
 <?php
 // +----------------------------------------------------------------------
-// | ThinkPHP Image Package - 独立入口类
+// | ThinkPHP Image Package - 静态快捷入口
 // +----------------------------------------------------------------------
-// | 说明：本类不继承 hulang\Image，而是在内部持有一个 hulang\Image
-// |      实例，逐个方法转调。对外用法：
-// |      ImageKit::open('a.jpg')->thumb(200, 200)->save('b.jpg');
+// | 说明：本类不继承 hulang\Image，只提供一组静态方法。
+// |      每个操作方法都是「打开源图 → 处理 → 保存到新文件」一步到位：
+// |      第一个参数是源文件，第二个参数是保存的新文件，后面才是原方法参数。
+// |      例：ImageKit::crop('a.jpg', 'b.jpg', 200, 150);
 // +----------------------------------------------------------------------
 
 namespace hulang;
 
 /**
- * 图片处理类（内部委托 hulang\Image 实现的独立入口）
+ * 图片处理类（静态快捷方式，内部调用 hulang\Image）
  *
- * 与 hulang\Image 的区别只在结构上：
+ * 用法：
  * ~~~
- * // 底层实现全部来自 hulang\Image
- * $image = \hulang\ImageKit::open('./a.jpg');
- * $image->thumb(200, 200)->save('./b.jpg');
+ * \hulang\ImageKit::thumb('./a.jpg', './b.jpg', 200, 200, \hulang\ImageKit::THUMB_CENTER);
+ * \hulang\ImageKit::water('./a.jpg', './c.jpg', './logo.png', \hulang\ImageKit::WATER_SOUTHEAST, 60);
  * ~~~
- * 调用方式、参数顺序、链式风格与 \hulang\Image 完全一致。
+ * 每个方法内部都按「打开 → 处理 → 保存」执行，返回实际写入的目标文件路径。
  */
 class ImageKit
 {
@@ -46,231 +46,94 @@ class ImageKit
     const FLIP_Y = Image::FLIP_Y; //Y轴翻转（左右翻转）
 
     /**
-     * 内部持有的图片处理对象
-     *
-     * @var Image
-     */
-    protected $image;
-
-    /**
-     * 构造方法：包装一个已经打开的 hulang\Image 对象
-     *
-     * 构造函数设为 protected，统一通过 open() 创建实例，
-     * 避免外部直接 new 出没有装载图片的空壳对象。
-     *
-     * @param Image $image 已打开图片的 hulang\Image 实例
-     */
-    protected function __construct(Image $image)
-    {
-        //保存内部实现对象，后续所有操作都转调给它
-        $this->image = $image;
-    }
-
-    /**
-     * 打开一个图片文件
-     *
-     * @param \SplFileInfo|string $file 图片文件或路径
-     * @return $this
-     * @throws image\Exception
-     */
-    public static function open($file)
-    {
-        //交给 hulang\Image 完成校验与解码，本类只负责包装返回
-        return new static(Image::open($file));
-    }
-
-    /**
-     * 取出内部持有的图片对象
-     *
-     * 需要直接使用 hulang\Image 或 Intervention 原始能力时可以用它，
-     * 例如：$obj->image()->save('./b.jpg');
-     *
-     * @return Image
-     */
-    public function image()
-    {
-        //直接返回内部对象，不做拷贝
-        return $this->image;
-    }
-
-    /**
-     * 保存图像
-     *
-     * @param string      $pathname  图像保存路径名称
-     * @param null|string $type      图像类型
-     * @param int         $quality   图像质量（JPEG / WebP 有效）
-     * @param bool        $interlace 是否对 JPEG 图像设置隔行扫描
-     * @return $this
-     */
-    public function save($pathname, $type = null, $quality = 80, $interlace = true)
-    {
-        //转调内部实现完成编码与写入
-        $this->image->save($pathname, $type, $quality, $interlace);
-
-        //返回本类实例，保持链式调用
-        return $this;
-    }
-
-    /**
-     * http 输出图片
-     *
-     * 注意：内部实现会在输出后直接 exit，所以它只能作为链式调用的最后一步。
-     *
-     * @return void
-     */
-    public function output()
-    {
-        //转调内部实现，异常与输出行为完全一致
-        $this->image->output();
-    }
-
-    /**
-     * 返回图像宽度
-     *
-     * @return int 图像宽度
-     */
-    public function width()
-    {
-        //转调内部实现读取宽度
-        return $this->image->width();
-    }
-
-    /**
-     * 返回图像高度
-     *
-     * @return int 图像高度
-     */
-    public function height()
-    {
-        //转调内部实现读取高度
-        return $this->image->height();
-    }
-
-    /**
-     * 返回图像类型
-     *
-     * @return string 图像类型
-     */
-    public function type()
-    {
-        //转调内部实现读取类型（jpg、png、gif 等）
-        return $this->image->type();
-    }
-
-    /**
-     * 返回图像 MIME 类型
-     *
-     * @return string 图像 MIME 类型
-     */
-    public function mime()
-    {
-        //转调内部实现读取 MIME
-        return $this->image->mime();
-    }
-
-    /**
-     * 返回图像尺寸数组 0 - 图像宽度，1 - 图像高度
-     *
-     * @return array 图像尺寸
-     */
-    public function size()
-    {
-        //转调内部实现读取尺寸数组
-        return $this->image->size();
-    }
-
-    /**
-     * 旋转图像
-     *
-     * @param int $degrees 顺时针旋转的度数
-     * @return $this
-     */
-    public function rotate($degrees = 90)
-    {
-        //转调内部实现旋转，动画 GIF 会逐帧处理
-        $this->image->rotate($degrees);
-
-        //返回本类实例，保持链式调用
-        return $this;
-    }
-
-    /**
-     * 翻转图像
-     *
-     * @param integer $direction 翻转轴，X 轴（上下）或 Y 轴（左右）
-     * @return $this
-     * @throws image\Exception
-     */
-    public function flip($direction = self::FLIP_X)
-    {
-        //转调内部实现翻转，非法的方向值由内部抛出异常
-        $this->image->flip($direction);
-
-        //返回本类实例，保持链式调用
-        return $this;
-    }
-
-    /**
      * 裁剪图像
      *
-     * @param  integer      $w      裁剪区域宽度
-     * @param  integer      $h      裁剪区域高度
-     * @param  integer      $x      裁剪区域 x 坐标
-     * @param  integer      $y      裁剪区域 y 坐标
-     * @param  null|integer $width  图像保存宽度
-     * @param  null|integer $height 图像保存高度
+     * @param string        $source 源图片路径
+     * @param string        $save   处理后的保存路径
+     * @param integer       $w      裁剪区域宽度
+     * @param integer       $h      裁剪区域高度
+     * @param integer       $x      裁剪区域 x 坐标
+     * @param integer       $y      裁剪区域 y 坐标
+     * @param null|integer  $width  图像保存宽度
+     * @param null|integer  $height 图像保存高度
      *
-     * @return $this
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
      */
-    public function crop($w, $h, $x = 0, $y = 0, $width = null, $height = null)
+    public static function crop($source, $save, $w, $h, $x = 0, $y = 0, $width = null, $height = null)
     {
-        //转调内部实现完成裁剪与二次缩放
-        $this->image->crop($w, $h, $x, $y, $width, $height);
+        //打开源图（校验与解码都由 hulang\Image 完成）
+        $image = Image::open($source);
 
-        //返回本类实例，保持链式调用
-        return $this;
+        //按原库的参数执行裁剪
+        $image->crop($w, $h, $x, $y, $width, $height);
+
+        //按目标文件的扩展名决定输出格式并写入
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径，方便调用方直接使用
+        return $save;
     }
 
     /**
      * 生成缩略图
      *
-     * @param  integer $width  缩略图最大宽度
-     * @param  integer $height 缩略图最大高度
-     * @param  int     $type   缩略图裁剪类型
+     * @param string  $source 源图片路径
+     * @param string  $save   处理后的保存路径
+     * @param integer $width  缩略图最大宽度
+     * @param integer $height 缩略图最大高度
+     * @param int     $type   缩略图裁剪类型
      *
-     * @return $this
+     * @return string 实际写入的目标文件路径
      * @throws image\Exception
      */
-    public function thumb($width, $height, $type = self::THUMB_SCALING)
+    public static function thumb($source, $save, $width, $height, $type = self::THUMB_SCALING)
     {
-        //转调内部实现生成缩略图
-        $this->image->thumb($width, $height, $type);
+        //打开源图
+        $image = Image::open($source);
 
-        //返回本类实例，保持链式调用
-        return $this;
+        //按指定类型生成缩略图
+        $image->thumb($width, $height, $type);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
     }
 
     /**
-     * 添加水印
+     * 添加图片水印
      *
-     * @param string    $source 水印图片路径
+     * @param string    $source 源图片路径
+     * @param string    $save   处理后的保存路径
+     * @param string    $water  水印图片路径
      * @param int|array $locate 水印位置
      * @param int       $alpha  透明度（0-100，100 为完全不透明）
-     * @return $this
+     *
+     * @return string 实际写入的目标文件路径
      * @throws image\Exception
      */
-    public function water($source, $locate = self::WATER_SOUTHEAST, $alpha = 100)
+    public static function water($source, $save, $water, $locate = self::WATER_SOUTHEAST, $alpha = 100)
     {
-        //转调内部实现叠加水印
-        $this->image->water($source, $locate, $alpha);
+        //打开源图
+        $image = Image::open($source);
 
-        //返回本类实例，保持链式调用
-        return $this;
+        //叠加水印
+        $image->water($water, $locate, $alpha);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
     }
 
     /**
      * 图像添加文字
      *
+     * @param string        $source 源图片路径
+     * @param string        $save   处理后的保存路径
      * @param string        $text   添加的文字
      * @param string        $font   字体路径
      * @param integer       $size   字号
@@ -279,15 +142,202 @@ class ImageKit
      * @param integer|array $offset 文字相对当前位置的偏移量
      * @param integer       $angle  文字倾斜角度
      *
-     * @return $this
+     * @return string 实际写入的目标文件路径
      * @throws image\Exception
      */
-    public function text($text, $font, $size, $color = '#00000000', $locate = self::WATER_SOUTHEAST, $offset = 0, $angle = 0)
+    public static function text($source, $save, $text, $font, $size, $color = '#00000000', $locate = self::WATER_SOUTHEAST, $offset = 0, $angle = 0)
     {
-        //转调内部实现写入文字（含颜色解析、坐标计算与字体路径处理）
-        $this->image->text($text, $font, $size, $color, $locate, $offset, $angle);
+        //打开源图
+        $image = Image::open($source);
 
-        //返回本类实例，保持链式调用
-        return $this;
+        //写入文字
+        $image->text($text, $font, $size, $color, $locate, $offset, $angle);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 旋转图像
+     *
+     * @param string  $source  源图片路径
+     * @param string  $save    处理后的保存路径
+     * @param integer $degrees 顺时针旋转的度数
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function rotate($source, $save, $degrees = 90)
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //旋转（动画 GIF 会逐帧处理）
+        $image->rotate($degrees);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 翻转图像
+     *
+     * @param string  $source    源图片路径
+     * @param string  $save      处理后的保存路径
+     * @param integer $direction 翻转轴，X 轴（上下）或 Y 轴（左右）
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function flip($source, $save, $direction = self::FLIP_X)
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //翻转
+        $image->flip($direction);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 仅保存（可用于格式转换或重新压缩，不做任何画面处理）
+     *
+     * @param string      $source    源图片路径
+     * @param string      $save      保存路径
+     * @param null|string $type      图像类型，不传则按目标文件扩展名
+     * @param int         $quality   图像质量（JPEG / WebP 有效）
+     * @param bool        $interlace 是否对 JPEG 图像设置隔行扫描
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function save($source, $save, $type = null, $quality = 80, $interlace = true)
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //没指定类型时按目标扩展名推断
+        if (null === $type) {
+            $type = self::extensionOf($save);
+        }
+
+        //写入文件
+        $image->save($save, $type, $quality, $interlace);
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * http 直接输出图片
+     *
+     * 注意：内部会在输出后 exit，只能放在脚本最后一步。
+     *
+     * @param string $source 源图片路径
+     * @return void
+     * @throws image\Exception
+     */
+    public static function output($source)
+    {
+        //打开源图后直接输出，不再保存
+        Image::open($source)->output();
+    }
+
+    /**
+     * 返回图像宽度
+     *
+     * @param string $source 源图片路径
+     * @return int 图像宽度
+     * @throws image\Exception
+     */
+    public static function width($source)
+    {
+        //打开后读取宽度
+        return Image::open($source)->width();
+    }
+
+    /**
+     * 返回图像高度
+     *
+     * @param string $source 源图片路径
+     * @return int 图像高度
+     * @throws image\Exception
+     */
+    public static function height($source)
+    {
+        //打开后读取高度
+        return Image::open($source)->height();
+    }
+
+    /**
+     * 返回图像类型
+     *
+     * @param string $source 源图片路径
+     * @return string 图像类型（jpg、png、gif 等）
+     * @throws image\Exception
+     */
+    public static function type($source)
+    {
+        //打开后读取类型
+        return Image::open($source)->type();
+    }
+
+    /**
+     * 返回图像 MIME 类型
+     *
+     * @param string $source 源图片路径
+     * @return string 图像 MIME 类型
+     * @throws image\Exception
+     */
+    public static function mime($source)
+    {
+        //打开后读取 MIME
+        return Image::open($source)->mime();
+    }
+
+    /**
+     * 返回图像尺寸数组 0 - 宽度，1 - 高度
+     *
+     * @param string $source 源图片路径
+     * @return array 图像尺寸
+     * @throws image\Exception
+     */
+    public static function size($source)
+    {
+        //打开后读取尺寸数组
+        return Image::open($source)->size();
+    }
+
+    /**
+     * 从保存路径中取出小写扩展名
+     *
+     * 目标文件没写扩展名时返回 null，交给 hulang\Image 沿用源文件类型。
+     *
+     * @param string $path 目标文件路径
+     * @return null|string 扩展名
+     */
+    protected static function extensionOf($path)
+    {
+        //取扩展名并统一转小写
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+        //没有扩展名时返回 null
+        if ('' === $ext) {
+            return null;
+        }
+
+        //返回规范化的扩展名
+        return $ext;
     }
 }

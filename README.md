@@ -10,9 +10,9 @@
 
 `hulang\Image` 的公共 API 完全不变（方法签名、常量、链式调用都保持原样），底层由原来的手写 GD 实现换成了 **Intervention Image 4.x**（GD 驱动）。
 
-`hulang\ImageKit` 是独立入口类：不继承 `hulang\Image`，内部持有一个 `hulang\Image` 实例并逐个方法转调。调用方式、参数顺序、链式风格与 `hulang\Image` 完全一致，`open()->thumb()->save()` 写法不变；需要直接操作底层对象时，可用 `image()` 取出内部的 `hulang\Image` 实例。
+`hulang\ImageKit` 是纯静态的快捷入口类：不继承 `hulang\Image`，每个操作方法都是「打开源图 → 处理 → 保存」一步到位。第一个参数是源文件、第二个参数是保存的新文件，后面才是原方法参数，返回值是实际写入的目标文件路径。
 
-`hulang\ImageIntervention` 作为历史类名保留，是 `hulang\ImageKit` 的一层薄壳（不再继承 `hulang\Image`），老代码无需改动即可继续使用。
+`hulang\ImageIntervention` 作为历史类名保留，静态方法全部继承自 `hulang\ImageKit`。它不再提供 `open()` 链式写法，需要对象方式连续操作时请直接用 `hulang\Image`。
 
 对外契约逐项对齐：
 
@@ -52,16 +52,21 @@ $image->thumb(200, 200, \hulang\Image::THUMB_CENTER)
       ->save('./thumb.jpg', null, 85);
 ~~~
 
-也可以换成独立入口类 `ImageKit`，写法完全一样：
+也可以换成 `ImageKit` 的静态写法，一步到位——第一个参数是源文件，第二个参数是保存的新文件：
 
 ~~~
-$image = \hulang\ImageKit::open('./image.jpg');
-$image->thumb(200, 200, \hulang\ImageKit::THUMB_CENTER)
-      ->save('./thumb.jpg', null, 85);
+\hulang\ImageKit::thumb('./image.jpg', './thumb.jpg', 200, 200, \hulang\ImageKit::THUMB_CENTER);
+\hulang\ImageKit::water('./image.jpg', './water.jpg', './logo.png', \hulang\ImageKit::WATER_SOUTHEAST, 60);
+\hulang\ImageKit::crop('./image.jpg', './crop.jpg', 400, 300, 100, 100, 200, 150);
+\hulang\ImageKit::text('./image.jpg', './text.jpg', '文字内容', './font.ttf', 24);
+\hulang\ImageKit::rotate('./image.jpg', './rotate.jpg', 90);
 
-//需要底层 hulang\Image 对象时
-$image->image()->save('./origin.jpg');
+//只读信息只需要传源文件
+$size  = \hulang\ImageKit::size('./image.jpg');
+$width = \hulang\ImageKit::width('./image.jpg');
 ~~~
+
+返回值是目标文件路径，可以直接拿去拼 URL 或入库。
 
 ## 与旧版（手写 GD 实现）的差异
 
@@ -79,8 +84,8 @@ $image->image()->save('./origin.jpg');
 | 文件 | 改动 |
 | --- | --- |
 | `src/Image.php` | 底层换为 Intervention Image 4.x，公共 API 不变；新增字体路径解析（中文目录兜底）、隔行 GIF 合法性兜底、`auto` 取色的越界保护 |
-| `src/ImageKit.php` | 新增独立入口类：不继承 `Image`，内部持有 `hulang\Image` 实例并逐个方法转调，常量值直接引用 `hulang\Image` |
-| `src/ImageIntervention.php` | 降级为 `hulang\ImageKit` 的兼容薄壳，保留历史类名 |
+| `src/ImageKit.php` | 新增静态快捷入口类：不继承 `Image`，每个方法按「打开源图 → 处理 → 保存」执行，参数为「源文件、目标文件、原方法参数」，常量值直接引用 `hulang\Image` |
+| `src/ImageIntervention.php` | 历史类名，静态方法全部继承自 `hulang\ImageKit`，不再提供 `open()` 链式写法 |
 | `src/image/gif/*` | 已删除（`Gif.php`、`Decoder.php`、`Encoder.php`），多帧处理由 Intervention 原生完成 |
 | `composer.json` | 依赖 `intervention/image: ^4.4`、`ext-mbstring`；`php` 约束由 `>=8.0` 改为 `>=8.3`；开发依赖 `phpunit/phpunit ^9.6` |
 | `tests/autoload.php`、`tests/php8-check.php` | 移除对 gif 目录的手动 `require`，改走 Composer 自动加载 |
@@ -99,5 +104,5 @@ php vendor/phpunit/phpunit/phpunit
 
 ~~~
 php tests/php8-check.php          # 13 项基础自检
-php tests/intervention-check.php  # 38 项 API 全覆盖自检
+php tests/intervention-check.php  # 43 项 ImageKit 静态 API 自检
 ~~~
