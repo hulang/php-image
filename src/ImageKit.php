@@ -395,13 +395,14 @@ class ImageKit
      * @param string      $save       处理后的保存路径
      * @param integer     $width      画布宽度
      * @param integer     $height     画布高度
-     * @param null|string $background 背景色，如 #ffffff；传 null 表示透明
-     * @param string      $position   原图位置：center、top-left、bottom-right 等
+     * @param null|string    $background 背景色，如 #ffffff；传 null 表示透明
+     * @param integer|string $position   原图位置：可用 self::POS_CENTER 等 9 个常量，
+     *                                   也可传 center、top-left、bottom-right 等字符串
      *
      * @return string 实际写入的目标文件路径
      * @throws image\Exception
      */
-    public static function resizeCanvas($source, $save, $width, $height, $background = '#ffffff', $position = 'center')
+    public static function resizeCanvas($source, $save, $width, $height, $background = '#ffffff', $position = self::POS_CENTER)
     {
         //打开源图
         $image = Image::open($source);
@@ -421,14 +422,15 @@ class ImageKit
      *
      * @param string  $source   源图片路径
      * @param string  $save     处理后的保存路径
-     * @param integer $width    目标宽度
-     * @param integer $height   目标高度
-     * @param string  $position 保留区域位置：center、top、bottom 等
+     * @param integer        $width    目标宽度
+     * @param integer        $height   目标高度
+     * @param integer|string $position 保留区域位置：可用 self::POS_CENTER 等 9 个常量，
+     *                                 也可传 center、top、bottom 等字符串
      *
      * @return string 实际写入的目标文件路径
      * @throws image\Exception
      */
-    public static function cover($source, $save, $width, $height, $position = 'center')
+    public static function cover($source, $save, $width, $height, $position = self::POS_CENTER)
     {
         //打开源图
         $image = Image::open($source);
@@ -448,15 +450,16 @@ class ImageKit
      *
      * @param string      $source     源图片路径
      * @param string      $save       处理后的保存路径
-     * @param integer     $width      目标宽度
-     * @param integer     $height     目标高度
-     * @param null|string $background 空缺背景色，传 null 表示透明
-     * @param string      $position   原图在区域内位置：center、top-left 等
+     * @param integer        $width      目标宽度
+     * @param integer        $height     目标高度
+     * @param null|string    $background 空缺背景色，传 null 表示透明
+     * @param integer|string $position   原图在区域内位置：可用 self::POS_CENTER 等 9 个
+     *                                   常量，也可传 center、top-left 等字符串
      *
      * @return string 实际写入的目标文件路径
      * @throws image\Exception
      */
-    public static function contain($source, $save, $width, $height, $background = '#ffffff', $position = 'center')
+    public static function contain($source, $save, $width, $height, $background = '#ffffff', $position = self::POS_CENTER)
     {
         //打开源图
         $image = Image::open($source);
@@ -504,13 +507,14 @@ class ImageKit
      * @param string|Image $image        要贴上去的图片路径，或 Image 实例
      * @param integer      $x            相对对齐点的横向偏移
      * @param integer      $y            相对对齐点的纵向偏移
-     * @param string       $position     对齐位置：top-left、center、bottom-right 等
-     * @param float        $transparency 透明度，0 全透明、1 完全不透明
+     * @param integer|string $position     对齐位置：可用 self::POS_NORTHWEST 等 9 个常量，
+     *                                     也可传 top-left、center、bottom-right 等字符串
+     * @param float          $transparency 透明度，0 全透明、1 完全不透明
      *
      * @return string 实际写入的目标文件路径
      * @throws image\Exception
      */
-    public static function insert($source, $save, $image, $x = 0, $y = 0, $position = 'top-left', $transparency = 1)
+    public static function insert($source, $save, $image, $x = 0, $y = 0, $position = self::POS_NORTHWEST, $transparency = 1)
     {
         //打开源图
         $canvas = Image::open($source);

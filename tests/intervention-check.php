@@ -345,7 +345,32 @@ check('setResolution() 写入 300dpi', 300.0 === (float) $dpi[0] && 300.0 === (f
 $colors = ImageKit::colors($src, 5);
 check('colors() 提取主色', 5 === count($colors) && '#' === substr($colors[0], 0, 1), implode(',', $colors));
 
+/* 22. 位置常量：与原生字符串等价 */
+$dstA = $out . 'kit-pos-const.jpg';
+ImageKit::cover($src, $dstA, 200, 200, ImageKit::POS_SOUTHEAST);
+$dstB = $out . 'kit-pos-str.jpg';
+ImageKit::cover($src, $dstB, 200, 200, 'bottom-right');
+check('cover() 位置常量与字符串结果一致', md5_file($dstA) === md5_file($dstB));
+
+$dst = $out . 'kit-pos-canvas.jpg';
+ImageKit::resizeCanvas($src, $dst, 300, 300, '#ffffff', ImageKit::POS_NORTHWEST);
+check('resizeCanvas() 接受位置常量', [300, 300] === ImageKit::size($dst));
+
+$dst = $out . 'kit-pos-insert.jpg';
+ImageKit::insert($src, $dst, $alphaSrc, 10, 10, ImageKit::POS_SOUTHEAST, 1);
+check('insert() 接受位置常量', [800, 600] === ImageKit::size($dst));
+
+check(
+    '9 个位置常量齐全且与九宫格对应',
+    9 === count([
+        ImageKit::POS_NORTHWEST, ImageKit::POS_NORTH, ImageKit::POS_NORTHEAST,
+        ImageKit::POS_WEST, ImageKit::POS_CENTER, ImageKit::POS_EAST,
+        ImageKit::POS_SOUTHWEST, ImageKit::POS_SOUTH, ImageKit::POS_SOUTHEAST,
+    ]) && ImageKit::POS_NORTHWEST === ImageKit::WATER_NORTHWEST
+);
+
 echo PHP_EOL . "通过 {$pass} 项，失败 {$fail} 项" . PHP_EOL;
+
 
 
 exit($fail > 0 ? 1 : 0);

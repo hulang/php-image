@@ -398,14 +398,18 @@ class Image
      *
      * @param integer     $width      画布宽度
      * @param integer     $height     画布高度
-     * @param null|string $background 背景色，如 #ffffff；传 null 表示透明
-     * @param string      $position   原图在画布上的位置：center、top-left、bottom-right 等
+     * @param null|string    $background 背景色，如 #ffffff；传 null 表示透明
+     * @param integer|string $position   原图在画布上的位置：可用 self::POS_CENTER 等 9 个
+     *                                   常量，也可传 center、top-left、bottom-right 等字符串
      * @return $this
      */
-    public function resizeCanvas($width, $height, $background = '#ffffff', $position = 'center')
+    public function resizeCanvas($width, $height, $background = '#ffffff', $position = self::POS_CENTER)
     {
+        //先把常量翻译成对齐字符串
+        $alignment = self::alignmentOf($position, 'center');
+
         //按目标画布尺寸重建，原图按位置摆放
-        $this->im = $this->im->resizeCanvas((int) $width, (int) $height, $background, $position);
+        $this->im = $this->im->resizeCanvas((int) $width, (int) $height, $background, $alignment);
 
         return $this;
     }
@@ -416,15 +420,19 @@ class Image
      * 适合头像、列表封面这类"必须正好是这个尺寸"的场景：
      * 先等比放大到能盖住整个区域，再把超出的部分裁掉。
      *
-     * @param integer $width    目标宽度
-     * @param integer $height   目标高度
-     * @param string  $position 保留区域的位置：center、top、bottom 等
+     * @param integer        $width    目标宽度
+     * @param integer        $height   目标高度
+     * @param integer|string $position 保留区域的位置：可用 self::POS_CENTER 等 9 个常量，
+     *                                 也可传 center、top、bottom 等字符串
      * @return $this
      */
-    public function cover($width, $height, $position = 'center')
+    public function cover($width, $height, $position = self::POS_CENTER)
     {
+        //先把常量翻译成对齐字符串
+        $alignment = self::alignmentOf($position, 'center');
+
         //等比填满后裁掉多余
-        $this->im = $this->im->cover((int) $width, (int) $height, $position);
+        $this->im = $this->im->cover((int) $width, (int) $height, $alignment);
 
         return $this;
     }
@@ -434,16 +442,20 @@ class Image
      *
      * 与 cover 相反：保证整张图都看得见，宁可四周留白。
      *
-     * @param integer     $width      目标宽度
-     * @param integer     $height     目标高度
-     * @param null|string $background 空缺处的背景色，传 null 表示透明
-     * @param string      $position   原图在区域内的位置：center、top-left 等
+     * @param integer        $width      目标宽度
+     * @param integer        $height     目标高度
+     * @param null|string    $background 空缺处的背景色，传 null 表示透明
+     * @param integer|string $position   原图在区域内的位置：可用 self::POS_CENTER 等 9 个
+     *                                   常量，也可传 center、top-left 等字符串
      * @return $this
      */
-    public function contain($width, $height, $background = '#ffffff', $position = 'center')
+    public function contain($width, $height, $background = '#ffffff', $position = self::POS_CENTER)
     {
+        //先把常量翻译成对齐字符串
+        $alignment = self::alignmentOf($position, 'center');
+
         //等比缩放到能完整放下，剩余区域补背景
-        $this->im = $this->im->contain((int) $width, (int) $height, $background, $position);
+        $this->im = $this->im->contain((int) $width, (int) $height, $background, $alignment);
 
         return $this;
     }
@@ -469,14 +481,15 @@ class Image
      *
      * 比 water() 更灵活：可以指定精确偏移和透明度，适合贴角标、贴价格签。
      *
-     * @param string|Image $source       被插入的图片路径，或本类的实例
-     * @param integer      $x            相对对齐点的横向偏移
-     * @param integer      $y            相对对齐点的纵向偏移
-     * @param string       $position     对齐位置：top-left、center、bottom-right 等
-     * @param float        $transparency 透明度，0 全透明、1 完全不透明
+     * @param string|Image   $source       被插入的图片路径，或本类的实例
+     * @param integer        $x            相对对齐点的横向偏移
+     * @param integer        $y            相对对齐点的纵向偏移
+     * @param integer|string $position     对齐位置：可用 self::POS_NORTHWEST 等 9 个常量，
+     *                                     也可传 top-left、center、bottom-right 等字符串
+     * @param float          $transparency 透明度，0 全透明、1 完全不透明
      * @return $this
      */
-    public function insert($source, $x = 0, $y = 0, $position = 'top-left', $transparency = 1)
+    public function insert($source, $x = 0, $y = 0, $position = self::POS_NORTHWEST, $transparency = 1)
     {
         //传路径先打开，传本类实例则直接取底层对象
         if (is_string($source)) {
@@ -485,8 +498,11 @@ class Image
             $source = $source->im;
         }
 
+        //先把常量翻译成对齐字符串
+        $alignment = self::alignmentOf($position, 'top-left');
+
         //按坐标和透明度贴到当前图上
-        $this->im = $this->im->insert($source, (int) $x, (int) $y, $position, (float) $transparency);
+        $this->im = $this->im->insert($source, (int) $x, (int) $y, $alignment, (float) $transparency);
 
         return $this;
     }
