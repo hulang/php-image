@@ -20,7 +20,7 @@
 - 另新增 9 个 `POS_*` 位置常量（`POS_NORTHWEST` … `POS_SOUTHEAST`，编号 1-9 与 `WATER_*` 完全一致），可直接作为 `cover / contain / resizeCanvas / insert` 的 `$position` 参数，也兼容 `'center'`、`'top-left'` 这类原生字符串；
 - `save($pathname, $type = null, $quality = 80, $interlace = true)`、`crop($w, $h, $x = 0, $y = 0, $width = null, $height = null)`、`thumb($width, $height, $type = self::THUMB_SCALING)`、`water($source, $locate = self::WATER_SOUTHEAST, $alpha = 100)`、`text($text, $font, $size, $color = '#00000000', $locate = self::WATER_SOUTHEAST, $offset = 0, $angle = 0)` 签名不变；
 - `output() / width() / height() / type() / mime() / size() / rotate() / flip() / __destruct()` 同样可用；
-- 新增图像处理方法：`orient() / trim() / sharpen() / blur() / grayscale() / brightness() / contrast() / pixelate()`；
+- 新增图像处理方法：`orient() / trim() / sharpen() / blur() / grayscale() / brightness() / contrast() / pixelate() / fillTransparentAreas()`；
 - 新增尺寸与变换方法：`resizeCanvas() / cover() / contain()`、`insert()`（按坐标自由贴图）、`encode()`（直接返回二进制、不写文件）；
 - 新增动图方法：`count() / isAnimated() / loops() / setLoops() / removeAnimation() / sliceAnimation()`；
 - 新增元信息方法：`resolution() / setResolution()`（DPI）、`colors()`（提取主色）；
@@ -158,7 +158,7 @@ $binary = \hulang\ImageKit::encode('./a.jpg', 'webp', 80);
 
 | 文件 | 改动 |
 | --- | --- |
-| `src/Image.php` | 底层换为 Intervention Image 4.x，公共 API 不变；新增字体路径解析（中文目录兜底）、隔行 GIF 合法性兜底、`auto` 取色的越界保护；另新增 `orient / trim / sharpen / blur / grayscale / brightness / contrast / pixelate / resizeCanvas / cover / contain / insert / encode / count / isAnimated / loops / setLoops / removeAnimation / sliceAnimation / resolution / setResolution / colors` 共 22 个图像处理与查询方法 |
+| `src/Image.php` | 底层换为 Intervention Image 4.x，公共 API 不变；新增字体路径解析（中文目录兜底）、隔行 GIF 合法性兜底、`auto` 取色的越界保护；另新增 `orient / trim / sharpen / blur / grayscale / brightness / contrast / pixelate / resizeCanvas / cover / contain / fillTransparentAreas / insert / encode / count / isAnimated / loops / setLoops / removeAnimation / sliceAnimation / resolution / setResolution / colors` 共 23 个图像处理与查询方法 |
 | `src/ImageConstants.php` | 新增常量 trait：17 个 `THUMB_*` / `WATER_*` / `FLIP_*` 常量，另加 9 个 `POS_*` 位置常量，共 26 个集中定义，`Image` 与 `ImageKit` 通过 `use` 共用；trait 内附带 `alignmentOf()`，把位置常量翻译成底层对齐字符串 |
 | `src/ImageKit.php` | 新增静态快捷入口类：不继承 `Image`，每个方法按「打开源图 → 处理 → 保存」执行，参数为「源文件、目标文件、原方法参数」；上述新增方法均提供对应的静态一步到位版本 |
 | `src/ImageIntervention.php` | 历史类名，静态方法全部继承自 `hulang\ImageKit`，不再提供 `open()` 链式写法 |
