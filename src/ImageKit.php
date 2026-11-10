@@ -22,28 +22,8 @@ namespace hulang;
  */
 class ImageKit
 {
-    /* 缩略图相关常量定义（值直接引用 hulang\Image，保证两处永远一致） */
-    const THUMB_SCALING   = Image::THUMB_SCALING; //常量，标识缩略图等比例缩放类型
-    const THUMB_FILLED    = Image::THUMB_FILLED; //常量，标识缩略图缩放后填充类型
-    const THUMB_CENTER    = Image::THUMB_CENTER; //常量，标识缩略图居中裁剪类型
-    const THUMB_NORTHWEST = Image::THUMB_NORTHWEST; //常量，标识缩略图左上角裁剪类型
-    const THUMB_SOUTHEAST = Image::THUMB_SOUTHEAST; //常量，标识缩略图右下角裁剪类型
-    const THUMB_FIXED     = Image::THUMB_FIXED; //常量，标识缩略图固定尺寸缩放类型
-
-    /* 水印相关常量定义（值直接引用 hulang\Image） */
-    const WATER_NORTHWEST = Image::WATER_NORTHWEST; //常量，标识左上角水印
-    const WATER_NORTH     = Image::WATER_NORTH; //常量，标识上居中水印
-    const WATER_NORTHEAST = Image::WATER_NORTHEAST; //常量，标识右上角水印
-    const WATER_WEST      = Image::WATER_WEST; //常量，标识左居中水印
-    const WATER_CENTER    = Image::WATER_CENTER; //常量，标识居中水印
-    const WATER_EAST      = Image::WATER_EAST; //常量，标识右居中水印
-    const WATER_SOUTHWEST = Image::WATER_SOUTHWEST; //常量，标识左下角水印
-    const WATER_SOUTH     = Image::WATER_SOUTH; //常量，标识下居中水印
-    const WATER_SOUTHEAST = Image::WATER_SOUTHEAST; //常量，标识右下角水印
-
-    /* 翻转相关常量定义（值直接引用 hulang\Image） */
-    const FLIP_X = Image::FLIP_X; //X轴翻转（上下翻转）
-    const FLIP_Y = Image::FLIP_Y; //Y轴翻转（左右翻转）
+    //引入常量定义，与 hulang\Image 共用同一份值（统一维护在 hulang\ImageConstants 中）
+    use ImageConstants;
 
     /**
      * 裁剪图像

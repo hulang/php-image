@@ -16,7 +16,7 @@
 
 对外契约逐项对齐：
 
-- 6 个 `THUMB_*`（`SCALING / FILLED / CENTER / NORTHWEST / SOUTHEAST / FIXED`）、9 个 `WATER_*`、`FLIP_X` / `FLIP_Y` 常量全部保留；
+- 6 个 `THUMB_*`（`SCALING / FILLED / CENTER / NORTHWEST / SOUTHEAST / FIXED`）、9 个 `WATER_*`、`FLIP_X` / `FLIP_Y` 常量全部保留，集中定义在 `src/ImageConstants.php` 的 trait 中，`Image` 与 `ImageKit` 共用同一份值；
 - `save($pathname, $type = null, $quality = 80, $interlace = true)`、`crop($w, $h, $x = 0, $y = 0, $width = null, $height = null)`、`thumb($width, $height, $type = self::THUMB_SCALING)`、`water($source, $locate = self::WATER_SOUTHEAST, $alpha = 100)`、`text($text, $font, $size, $color = '#00000000', $locate = self::WATER_SOUTHEAST, $offset = 0, $angle = 0)` 签名不变；
 - `output() / width() / height() / type() / mime() / size() / rotate() / flip() / __destruct()` 同样可用；
 - `open()` 接受 `\SplFileInfo` 或字符串路径，异常类型仍是 `hulang\image\Exception`。
@@ -84,7 +84,8 @@ $width = \hulang\ImageKit::width('./image.jpg');
 | 文件 | 改动 |
 | --- | --- |
 | `src/Image.php` | 底层换为 Intervention Image 4.x，公共 API 不变；新增字体路径解析（中文目录兜底）、隔行 GIF 合法性兜底、`auto` 取色的越界保护 |
-| `src/ImageKit.php` | 新增静态快捷入口类：不继承 `Image`，每个方法按「打开源图 → 处理 → 保存」执行，参数为「源文件、目标文件、原方法参数」，常量值直接引用 `hulang\Image` |
+| `src/ImageConstants.php` | 新增常量 trait：17 个 `THUMB_*` / `WATER_*` / `FLIP_*` 常量集中定义，`Image` 与 `ImageKit` 通过 `use` 共用，只维护一份值 |
+| `src/ImageKit.php` | 新增静态快捷入口类：不继承 `Image`，每个方法按「打开源图 → 处理 → 保存」执行，参数为「源文件、目标文件、原方法参数」 |
 | `src/ImageIntervention.php` | 历史类名，静态方法全部继承自 `hulang\ImageKit`，不再提供 `open()` 链式写法 |
 | `src/image/gif/*` | 已删除（`Gif.php`、`Decoder.php`、`Encoder.php`），多帧处理由 Intervention 原生完成 |
 | `composer.json` | 依赖 `intervention/image: ^4.4`、`ext-mbstring`；`php` 约束由 `>=8.0` 改为 `>=8.3`；开发依赖 `phpunit/phpunit ^9.6` |
