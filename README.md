@@ -19,7 +19,11 @@
 - 6 个 `THUMB_*`（`SCALING / FILLED / CENTER / NORTHWEST / SOUTHEAST / FIXED`）、9 个 `WATER_*`、`FLIP_X` / `FLIP_Y` 常量全部保留，集中定义在 `src/ImageConstants.php` 的 trait 中，`Image` 与 `ImageKit` 共用同一份值；
 - `save($pathname, $type = null, $quality = 80, $interlace = true)`、`crop($w, $h, $x = 0, $y = 0, $width = null, $height = null)`、`thumb($width, $height, $type = self::THUMB_SCALING)`、`water($source, $locate = self::WATER_SOUTHEAST, $alpha = 100)`、`text($text, $font, $size, $color = '#00000000', $locate = self::WATER_SOUTHEAST, $offset = 0, $angle = 0)` 签名不变；
 - `output() / width() / height() / type() / mime() / size() / rotate() / flip() / __destruct()` 同样可用；
-- 新增 `orient() / trim() / sharpen() / blur() / grayscale()` 五个常用图像处理方法，链式与静态两种用法都支持；
+- 新增图像处理方法：`orient() / trim() / sharpen() / blur() / grayscale() / brightness() / contrast() / pixelate()`；
+- 新增尺寸与变换方法：`resizeCanvas() / cover() / contain()`、`insert()`（按坐标自由贴图）、`encode()`（直接返回二进制、不写文件）；
+- 新增动图方法：`count() / isAnimated() / loops() / setLoops() / removeAnimation() / sliceAnimation()`；
+- 新增元信息方法：`resolution() / setResolution()`（DPI）、`colors()`（提取主色）；
+- 以上方法在 `Image` 上是链式调用，在 `ImageKit` 上都有对应的静态一步到位版本；
 - `open()` 接受 `\SplFileInfo` 或字符串路径，异常类型仍是 `hulang\image\Exception`。
 
 ## 安装
@@ -84,6 +88,41 @@ $width = \hulang\ImageKit::width('./image.jpg');
 \hulang\ImageKit::grayscale('./a.jpg', './b.jpg');
 ~~~
 
+调色、画布与动图相关的方法同样是同样的调用方式：
+
+~~~
+//调色：亮度、对比度范围都是 -100 ~ 100，pixelate 用来打码
+\hulang\ImageKit::brightness('./a.jpg', './b.jpg', 30);
+\hulang\ImageKit::contrast('./a.jpg', './b.jpg', 20);
+\hulang\ImageKit::pixelate('./a.jpg', './b.jpg', 15);
+
+//统一画布（不缩放图像，只补边或裁边）、头像裁切、完整容纳
+\hulang\ImageKit::resizeCanvas('./a.jpg', './b.jpg', 300, 300);
+\hulang\ImageKit::cover('./a.jpg', './b.jpg', 200, 200);
+\hulang\ImageKit::contain('./a.jpg', './b.jpg', 200, 200, '#ffffff');
+
+//把另一张图贴到指定位置（比 water 的九宫格更灵活）
+\hulang\ImageKit::insert('./a.jpg', './b.jpg', './badge.png', 10, 10, 'top-left', 0.8);
+
+//透明 PNG 转 JPG 前，先把透明区域刷成底色
+\hulang\ImageKit::fillTransparentAreas('./alpha.png', './b.jpg', '#ffffff');
+
+//动图：取第一帧做封面、截取前 10 帧、改循环次数
+\hulang\ImageKit::removeAnimation('./a.gif', './cover.gif', 0);
+\hulang\ImageKit::sliceAnimation('./a.gif', './part.gif', 0, 10);
+\hulang\ImageKit::setLoops('./a.gif', './loop.gif', 3);
+
+echo \hulang\ImageKit::count('./a.gif');      // 42（帧数）
+var_dump(\hulang\ImageKit::isAnimated('./a.gif'));  // true
+
+//DPI 与主色
+\hulang\ImageKit::setResolution('./a.jpg', './300dpi.jpg', 300);
+$colors = \hulang\ImageKit::colors('./a.jpg', 5);   // ['#ffad19', '#ffc55a', ...]
+
+//直接拿二进制，不落盘（适合直接输出到浏览器或上传对象存储）
+$binary = \hulang\ImageKit::encode('./a.jpg', 'webp', 80);
+~~~
+
 链式写法同样可用：
 
 ~~~
@@ -91,6 +130,11 @@ $width = \hulang\ImageKit::width('./image.jpg');
     ->orient()
     ->trim()
     ->sharpen(10)
+    ->save('./b.jpg');
+
+\hulang\Image::open('./a.jpg')
+    ->cover(200, 200)
+    ->brightness(20)
     ->save('./b.jpg');
 ~~~
 
@@ -109,9 +153,9 @@ $width = \hulang\ImageKit::width('./image.jpg');
 
 | 文件 | 改动 |
 | --- | --- |
-| `src/Image.php` | 底层换为 Intervention Image 4.x，公共 API 不变；新增字体路径解析（中文目录兜底）、隔行 GIF 合法性兜底、`auto` 取色的越界保护 |
+| `src/Image.php` | 底层换为 Intervention Image 4.x，公共 API 不变；新增字体路径解析（中文目录兜底）、隔行 GIF 合法性兜底、`auto` 取色的越界保护；另新增 `orient / trim / sharpen / blur / grayscale / brightness / contrast / pixelate / resizeCanvas / cover / contain / insert / encode / count / isAnimated / loops / setLoops / removeAnimation / sliceAnimation / resolution / setResolution / colors` 共 22 个图像处理与查询方法 |
 | `src/ImageConstants.php` | 新增常量 trait：17 个 `THUMB_*` / `WATER_*` / `FLIP_*` 常量集中定义，`Image` 与 `ImageKit` 通过 `use` 共用，只维护一份值 |
-| `src/ImageKit.php` | 新增静态快捷入口类：不继承 `Image`，每个方法按「打开源图 → 处理 → 保存」执行，参数为「源文件、目标文件、原方法参数」 |
+| `src/ImageKit.php` | 新增静态快捷入口类：不继承 `Image`，每个方法按「打开源图 → 处理 → 保存」执行，参数为「源文件、目标文件、原方法参数」；上述新增方法均提供对应的静态一步到位版本 |
 | `src/ImageIntervention.php` | 历史类名，静态方法全部继承自 `hulang\ImageKit`，不再提供 `open()` 链式写法 |
 | `src/image/gif/*` | 已删除（`Gif.php`、`Decoder.php`、`Encoder.php`），多帧处理由 Intervention 原生完成 |
 | `composer.json` | 依赖 `intervention/image: ^4.4`、`ext-mbstring`；`php` 约束由 `>=8.0` 改为 `>=8.3`；开发依赖 `phpunit/phpunit ^9.6` |
@@ -131,5 +175,5 @@ php vendor/phpunit/phpunit/phpunit
 
 ~~~
 php tests/php8-check.php          # 13 项基础自检
-php tests/intervention-check.php  # 49 项 ImageKit 静态 API 自检
+php tests/intervention-check.php  # 66 项 ImageKit 静态 API 自检
 ~~~

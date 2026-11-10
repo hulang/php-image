@@ -265,6 +265,87 @@ $grayB = $grayRgb & 0xFF;
 imagedestroy($grayPixel);
 check('grayscale() 输出像素 R=G=B', $grayR === $grayG && $grayG === $grayB, "rgb({$grayR},{$grayG},{$grayB})");
 
+/* 20. 调色与尺寸：亮度 / 对比度 / 像素化 / 画布 / 覆盖 / 容纳 */
+$dst = $out . 'kit-bright.jpg';
+ImageKit::brightness($src, $dst, 50);
+check('brightness() 尺寸不变', [800, 600] === ImageKit::size($dst));
+
+$dst = $out . 'kit-contrast.jpg';
+ImageKit::contrast($src, $dst, 30);
+check('contrast() 尺寸不变', [800, 600] === ImageKit::size($dst));
+
+$dst = $out . 'kit-pixel.jpg';
+ImageKit::pixelate($src, $dst, 15);
+check('pixelate() 尺寸不变', [800, 600] === ImageKit::size($dst));
+
+$dst = $out . 'kit-canvas.jpg';
+ImageKit::resizeCanvas($src, $dst, 300, 300);
+check('resizeCanvas() 输出 300x300 画布', [300, 300] === ImageKit::size($dst));
+
+$dst = $out . 'kit-cover.jpg';
+ImageKit::cover($src, $dst, 200, 200);
+check('cover() 输出 200x200', [200, 200] === ImageKit::size($dst));
+
+$dst = $out . 'kit-contain.jpg';
+ImageKit::contain($src, $dst, 200, 200);
+check('contain() 输出 200x200', [200, 200] === ImageKit::size($dst));
+
+/* 21. 透明填充 / 贴图 / 编码 / 动图 / DPI / 主色 */
+//现造一张透明 PNG：四周全透明，中间一个红方块
+$alphaSrc = $out . 'check-alpha.png';
+$alphaCanvas = imagecreatetruecolor(200, 200);
+imagesavealpha($alphaCanvas, true);
+imagealphablending($alphaCanvas, false);
+$alphaTrans = imagecolorallocatealpha($alphaCanvas, 0, 0, 0, 127);
+imagefill($alphaCanvas, 0, 0, $alphaTrans);
+imagealphablending($alphaCanvas, true);
+$alphaRed = imagecolorallocate($alphaCanvas, 255, 0, 0);
+imagefilledrectangle($alphaCanvas, 80, 80, 120, 120, $alphaRed);
+imagepng($alphaCanvas, $alphaSrc);
+imagedestroy($alphaCanvas);
+
+$dst = $out . 'kit-fill.jpg';
+ImageKit::fillTransparentAreas($alphaSrc, $dst, '#00ff00');
+$fillPixel = imagecreatefromjpeg($dst);
+$fillRgb = imagecolorat($fillPixel, 5, 5);
+$fillR = ($fillRgb >> 16) & 0xFF;
+$fillG = ($fillRgb >> 8) & 0xFF;
+$fillB = $fillRgb & 0xFF;
+imagedestroy($fillPixel);
+check('fillTransparentAreas() 透明区填成绿色', $fillR < 40 && $fillG > 215 && $fillB < 40, "rgb({$fillR},{$fillG},{$fillB})");
+
+$dst = $out . 'kit-insert.jpg';
+ImageKit::insert($src, $dst, $alphaSrc, 10, 10, 'top-left', 1);
+check('insert() 贴图后尺寸不变', [800, 600] === ImageKit::size($dst));
+
+$bin = ImageKit::encode($src, 'webp', 80);
+check('encode() 返回 WebP 二进制', 0 === strpos($bin, 'RIFF') && strlen($bin) > 1000, strlen($bin) . ' 字节');
+
+check('count() 读出 GIF 帧数', 42 === ImageKit::count($gif), (string) ImageKit::count($gif));
+check('isAnimated() 识别动图', true === ImageKit::isAnimated($gif));
+check('isAnimated() 静态图为 false', false === ImageKit::isAnimated($src));
+
+$dst = $out . 'kit-loop.gif';
+ImageKit::setLoops($gif, $dst, 3);
+check('setLoops() 写入 3 遍后读回重复次数 2', 2 === ImageKit::loops($dst), (string) ImageKit::loops($dst));
+
+$dst = $out . 'kit-static.gif';
+ImageKit::removeAnimation($gif, $dst, 0);
+check('removeAnimation() 只留一帧', 1 === ImageKit::count($dst), (string) ImageKit::count($dst));
+
+$dst = $out . 'kit-slice.gif';
+ImageKit::sliceAnimation($gif, $dst, 0, 10);
+check('sliceAnimation() 截取 10 帧', 10 === ImageKit::count($dst), (string) ImageKit::count($dst));
+
+$dst = $out . 'kit-dpi.jpg';
+ImageKit::setResolution($src, $dst, 300);
+$dpi = ImageKit::resolution($dst);
+check('setResolution() 写入 300dpi', 300.0 === (float) $dpi[0] && 300.0 === (float) $dpi[1], "{$dpi[0]}x{$dpi[1]}");
+
+$colors = ImageKit::colors($src, 5);
+check('colors() 提取主色', 5 === count($colors) && '#' === substr($colors[0], 0, 1), implode(',', $colors));
+
 echo PHP_EOL . "通过 {$pass} 项，失败 {$fail} 项" . PHP_EOL;
+
 
 exit($fail > 0 ? 1 : 0);

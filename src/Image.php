@@ -347,6 +347,322 @@ class Image
     }
 
     /**
+     * 调整图像亮度
+     *
+     * @param integer $level 亮度级别，-100 最暗、0 保持原样、100 最亮
+     * @return $this
+     */
+    public function brightness($level)
+    {
+        //负数变暗，正数变亮
+        $this->im = $this->im->brightness((int) $level);
+
+        return $this;
+    }
+
+    /**
+     * 调整图像对比度
+     *
+     * @param integer $level 对比度级别，-100 最柔和、0 保持原样、100 最锐利
+     * @return $this
+     */
+    public function contrast($level)
+    {
+        //负数降低对比，正数增强对比
+        $this->im = $this->im->contrast((int) $level);
+
+        return $this;
+    }
+
+    /**
+     * 像素化（马赛克）效果
+     *
+     * 可以用来给隐私区域打码，或者做缩略图的占位色块。
+     *
+     * @param integer $size 每个像素块的边长（像素），数值越大越模糊
+     * @return $this
+     */
+    public function pixelate($size = 10)
+    {
+        //块越大越糊，10 已经是明显马赛克
+        $this->im = $this->im->pixelate((int) $size);
+
+        return $this;
+    }
+
+    /**
+     * 把图像放到指定尺寸的画布上
+     *
+     * 只调整画布大小，不缩放图像本身；画布比图大时四周补背景色，
+     * 画布比图小时按对齐位置裁掉多余部分。
+     *
+     * @param integer     $width      画布宽度
+     * @param integer     $height     画布高度
+     * @param null|string $background 背景色，如 #ffffff；传 null 表示透明
+     * @param string      $position   原图在画布上的位置：center、top-left、bottom-right 等
+     * @return $this
+     */
+    public function resizeCanvas($width, $height, $background = '#ffffff', $position = 'center')
+    {
+        //按目标画布尺寸重建，原图按位置摆放
+        $this->im = $this->im->resizeCanvas((int) $width, (int) $height, $background, $position);
+
+        return $this;
+    }
+
+    /**
+     * 等比缩放并裁切，填满指定尺寸
+     *
+     * 适合头像、列表封面这类"必须正好是这个尺寸"的场景：
+     * 先等比放大到能盖住整个区域，再把超出的部分裁掉。
+     *
+     * @param integer $width    目标宽度
+     * @param integer $height   目标高度
+     * @param string  $position 保留区域的位置：center、top、bottom 等
+     * @return $this
+     */
+    public function cover($width, $height, $position = 'center')
+    {
+        //等比填满后裁掉多余
+        $this->im = $this->im->cover((int) $width, (int) $height, $position);
+
+        return $this;
+    }
+
+    /**
+     * 等比缩放并完整容纳，空缺处补背景色
+     *
+     * 与 cover 相反：保证整张图都看得见，宁可四周留白。
+     *
+     * @param integer     $width      目标宽度
+     * @param integer     $height     目标高度
+     * @param null|string $background 空缺处的背景色，传 null 表示透明
+     * @param string      $position   原图在区域内的位置：center、top-left 等
+     * @return $this
+     */
+    public function contain($width, $height, $background = '#ffffff', $position = 'center')
+    {
+        //等比缩放到能完整放下，剩余区域补背景
+        $this->im = $this->im->contain((int) $width, (int) $height, $background, $position);
+
+        return $this;
+    }
+
+    /**
+     * 把透明区域填充为指定颜色
+     *
+     * 透明 PNG 转 JPG 时常用：JPG 没有透明通道，不填色的话透明区域会变成白或黑。
+     *
+     * @param null|string $color 填充色，如 #ffffff；传 null 表示不处理
+     * @return $this
+     */
+    public function fillTransparentAreas($color = '#ffffff')
+    {
+        //把 alpha 为 0 的像素刷成指定颜色
+        $this->im = $this->im->fillTransparentAreas($color);
+
+        return $this;
+    }
+
+    /**
+     * 在指定位置插入另一张图片
+     *
+     * 比 water() 更灵活：可以指定精确偏移和透明度，适合贴角标、贴价格签。
+     *
+     * @param string|Image $source       被插入的图片路径，或本类的实例
+     * @param integer      $x            相对对齐点的横向偏移
+     * @param integer      $y            相对对齐点的纵向偏移
+     * @param string       $position     对齐位置：top-left、center、bottom-right 等
+     * @param float        $transparency 透明度，0 全透明、1 完全不透明
+     * @return $this
+     */
+    public function insert($source, $x = 0, $y = 0, $position = 'top-left', $transparency = 1)
+    {
+        //传路径先打开，传本类实例则直接取底层对象
+        if (is_string($source)) {
+            $source = Image::open($source)->im;
+        } elseif ($source instanceof self) {
+            $source = $source->im;
+        }
+
+        //按坐标和透明度贴到当前图上
+        $this->im = $this->im->insert($source, (int) $x, (int) $y, $position, (float) $transparency);
+
+        return $this;
+    }
+
+    /**
+     * 直接返回编码后的图片二进制内容（不写文件）
+     *
+     * 适合直接输出到浏览器、上传到对象存储，或塞进响应体，省掉中间临时文件。
+     *
+     * @param null|string $type    图片类型，如 jpg、png、webp；不传则沿用源文件类型
+     * @param integer     $quality 质量 0-100，只对 JPEG / WebP 生效
+     * @return string 编码后的二进制字符串
+     */
+    public function encode($type = null, $quality = 80)
+    {
+        //不指定类型时沿用源文件类型
+        if (is_null($type)) {
+            $type = $this->info['type'];
+        } else {
+            $type = strtolower($type);
+        }
+        //JPEG 统一写成 jpg
+        if ('jpeg' == $type) {
+            $type = 'jpg';
+        }
+
+        //只有 JPEG / WebP 支持质量参数
+        $options = [];
+        if (in_array($type, ['jpg', 'webp'], true)) {
+            $options['quality'] = (int) $quality;
+        }
+
+        //编码后按字符串返回
+        return (string) $this->im->encodeUsingFileExtension($type, ...$options);
+    }
+
+    /**
+     * 返回图像的帧数
+     *
+     * 普通静态图片返回 1，动图返回实际帧数。
+     *
+     * @return integer 帧数
+     */
+    public function count()
+    {
+        //帧数由底层 core 统计
+        return $this->im->count();
+    }
+
+    /**
+     * 判断是不是动图
+     *
+     * @return boolean 帧数大于 1 返回 true
+     */
+    public function isAnimated()
+    {
+        //多帧即视为动图
+        return $this->im->isAnimated();
+    }
+
+    /**
+     * 返回动图的循环次数
+     *
+     * 注意 GIF 的 loop 字段记录的是"重复次数"，比实际播放次数少 1：
+     * 读到 2 表示浏览器会播 3 遍，读到 0 表示无限循环。
+     *
+     * @return integer 循环次数，0 表示无限循环
+     */
+    public function loops()
+    {
+        //读取 GIF 的循环播放次数
+        return $this->im->loops();
+    }
+
+    /**
+     * 设置动图的循环次数
+     *
+     * @param integer $loops 循环次数，0 表示无限循环；设为 3 时实际播放 3 遍，
+     *                       再用 loops() 读回来会是 2（GIF 记录的是重复次数）
+     * @return $this
+     */
+    public function setLoops($loops)
+    {
+        //写回循环次数
+        $this->im = $this->im->setLoops((int) $loops);
+
+        return $this;
+    }
+
+    /**
+     * 去掉动画，只保留其中一帧
+     *
+     * 常用在"动图只显示封面"的场景，处理后就是一张静态图。
+     *
+     * @param integer $position 保留第几帧，0 表示第一帧
+     * @return $this
+     */
+    public function removeAnimation($position = 0)
+    {
+        //只留下指定帧
+        $this->im = $this->im->removeAnimation((int) $position);
+
+        return $this;
+    }
+
+    /**
+     * 截取动图的一段帧
+     *
+     * @param integer      $offset 从第几帧开始，0 表示第一帧
+     * @param null|integer $length 取多少帧，null 表示一直取到结尾
+     * @return $this
+     */
+    public function sliceAnimation($offset = 0, $length = null)
+    {
+        //按区间截取帧，用于做动图预览片段
+        $this->im = $this->im->sliceAnimation((int) $offset, $length);
+
+        return $this;
+    }
+
+    /**
+     * 读取图像的分辨率（DPI）
+     *
+     * 没有 DPI 元数据的图片（网上下载的图基本都是）通常返回 1，
+     * 需要按 300dpi 交付时用 setResolution() 显式设置。
+     *
+     * @return array 0 - 水平 DPI，1 - 垂直 DPI
+     */
+    public function resolution()
+    {
+        //解析出分辨率对象后取两个方向的值
+        $resolution = $this->im->resolution();
+
+        return [$resolution->x(), $resolution->y()];
+    }
+
+    /**
+     * 设置图像的分辨率（DPI）
+     *
+     * 有些印刷、投稿、图库平台会卡 300dpi，上传前可以用它改。
+     *
+     * @param float      $x 水平 DPI
+     * @param null|float $y 垂直 DPI，不传时与水平方向相同
+     * @return $this
+     */
+    public function setResolution($x, $y = null)
+    {
+        //只传一个值时横竖用同一个 DPI
+        empty($y) && $y = $x;
+
+        $this->im = $this->im->setResolution((float) $x, (float) $y);
+
+        return $this;
+    }
+
+    /**
+     * 提取图像的主色调
+     *
+     * @param integer $count 取几个颜色，默认 5 个
+     * @return array 十六进制颜色数组，例如 ['#f5c26b', '#2b2b2b']
+     */
+    public function colors($count = 5)
+    {
+        //dominant 按像素占比排序，取前 N 个主色
+        $palette = $this->im->colors()->dominant((int) $count);
+
+        $list = [];
+        foreach ($palette as $color) {
+            //带 # 前缀，方便直接写进 CSS
+            $list[] = $color->toHex(true);
+        }
+
+        return $list;
+    }
+
+    /**
      * 裁剪图像
      *
      * @param  integer $w      裁剪区域宽度

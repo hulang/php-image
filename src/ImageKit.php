@@ -314,6 +314,414 @@ class ImageKit
     }
 
     /**
+     * 调整亮度并保存
+     *
+     * @param string  $source 源图片路径
+     * @param string  $save   处理后的保存路径
+     * @param integer $level  亮度级别，-100 最暗、0 原样、100 最亮
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function brightness($source, $save, $level)
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //调整亮度
+        $image->brightness($level);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 调整对比度并保存
+     *
+     * @param string  $source 源图片路径
+     * @param string  $save   处理后的保存路径
+     * @param integer $level  对比度级别，-100 最柔和、0 原样、100 最锐利
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function contrast($source, $save, $level)
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //调整对比度
+        $image->contrast($level);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 像素化（马赛克）后保存
+     *
+     * @param string  $source 源图片路径
+     * @param string  $save   处理后的保存路径
+     * @param integer $size   像素块边长，数值越大越模糊
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function pixelate($source, $save, $size = 10)
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //打马赛克
+        $image->pixelate($size);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 把图像放到指定尺寸的画布上并保存
+     *
+     * @param string      $source     源图片路径
+     * @param string      $save       处理后的保存路径
+     * @param integer     $width      画布宽度
+     * @param integer     $height     画布高度
+     * @param null|string $background 背景色，如 #ffffff；传 null 表示透明
+     * @param string      $position   原图位置：center、top-left、bottom-right 等
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function resizeCanvas($source, $save, $width, $height, $background = '#ffffff', $position = 'center')
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //按目标尺寸重建画布
+        $image->resizeCanvas($width, $height, $background, $position);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 等比缩放裁切填满指定尺寸并保存
+     *
+     * @param string  $source   源图片路径
+     * @param string  $save     处理后的保存路径
+     * @param integer $width    目标宽度
+     * @param integer $height   目标高度
+     * @param string  $position 保留区域位置：center、top、bottom 等
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function cover($source, $save, $width, $height, $position = 'center')
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //等比填满后裁切
+        $image->cover($width, $height, $position);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 等比缩放完整容纳并保存（空缺补背景色）
+     *
+     * @param string      $source     源图片路径
+     * @param string      $save       处理后的保存路径
+     * @param integer     $width      目标宽度
+     * @param integer     $height     目标高度
+     * @param null|string $background 空缺背景色，传 null 表示透明
+     * @param string      $position   原图在区域内位置：center、top-left 等
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function contain($source, $save, $width, $height, $background = '#ffffff', $position = 'center')
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //等比缩放到完整放下
+        $image->contain($width, $height, $background, $position);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 把透明区域填成指定颜色并保存
+     *
+     * @param string      $source 源图片路径
+     * @param string      $save   处理后的保存路径
+     * @param null|string $color  填充色，如 #ffffff；传 null 表示不处理
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function fillTransparentAreas($source, $save, $color = '#ffffff')
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //透明区域刷底色
+        $image->fillTransparentAreas($color);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 把另一张图贴到源图上并保存
+     *
+     * @param string       $source       源图片路径
+     * @param string       $save         处理后的保存路径
+     * @param string|Image $image        要贴上去的图片路径，或 Image 实例
+     * @param integer      $x            相对对齐点的横向偏移
+     * @param integer      $y            相对对齐点的纵向偏移
+     * @param string       $position     对齐位置：top-left、center、bottom-right 等
+     * @param float        $transparency 透明度，0 全透明、1 完全不透明
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function insert($source, $save, $image, $x = 0, $y = 0, $position = 'top-left', $transparency = 1)
+    {
+        //打开源图
+        $canvas = Image::open($source);
+
+        //把目标图贴到指定位置
+        $canvas->insert($image, $x, $y, $position, $transparency);
+
+        //按目标扩展名保存
+        $canvas->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 直接返回编码后的二进制内容（不写文件）
+     *
+     * @param string      $source  源图片路径
+     * @param null|string $type    目标类型，如 jpg、png、webp；不传则沿用源类型
+     * @param integer     $quality 质量 0-100，只对 JPEG / WebP 生效
+     *
+     * @return string 图片二进制字符串
+     * @throws image\Exception
+     */
+    public static function encode($source, $type = null, $quality = 80)
+    {
+        //打开源图后直接编码返回
+        return Image::open($source)->encode($type, $quality);
+    }
+
+    /**
+     * 读取图像的帧数
+     *
+     * @param string $source 源图片路径
+     *
+     * @return integer 帧数，静态图返回 1
+     * @throws image\Exception
+     */
+    public static function count($source)
+    {
+        //打开后取帧数
+        return Image::open($source)->count();
+    }
+
+    /**
+     * 判断是不是动图
+     *
+     * @param string $source 源图片路径
+     *
+     * @return boolean 帧数大于 1 返回 true
+     * @throws image\Exception
+     */
+    public static function isAnimated($source)
+    {
+        //打开后判断帧数
+        return Image::open($source)->isAnimated();
+    }
+
+    /**
+     * 读取动图的循环次数
+     *
+     * 注意 GIF 的 loop 字段记录的是"重复次数"，比实际播放次数少 1：
+     * 读到 2 表示浏览器会播 3 遍，读到 0 表示无限循环。
+     *
+     * @param string $source 源图片路径
+     *
+     * @return integer 循环次数，0 表示无限循环
+     * @throws image\Exception
+     */
+    public static function loops($source)
+    {
+        //打开后读取循环次数
+        return Image::open($source)->loops();
+    }
+
+    /**
+     * 设置动图循环次数并保存
+     *
+     * @param string  $source 源图片路径
+     * @param string  $save   处理后的保存路径
+     * @param integer $loops  循环次数，0 表示无限循环；设为 3 时实际播放 3 遍，
+     *                        再用 loops() 读回来会是 2（GIF 记录的是重复次数）
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function setLoops($source, $save, $loops)
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //写回循环次数
+        $image->setLoops($loops);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 去掉动画只留一帧并保存
+     *
+     * @param string  $source   源图片路径
+     * @param string  $save     处理后的保存路径
+     * @param integer $position 保留第几帧，0 表示第一帧
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function removeAnimation($source, $save, $position = 0)
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //只保留指定帧
+        $image->removeAnimation($position);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 截取动图的一段帧并保存
+     *
+     * @param string      $source 源图片路径
+     * @param string      $save   处理后的保存路径
+     * @param integer     $offset 从第几帧开始，0 表示第一帧
+     * @param null|integer $length 取多少帧，null 表示取到结尾
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function sliceAnimation($source, $save, $offset = 0, $length = null)
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //按区间截取帧
+        $image->sliceAnimation($offset, $length);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 读取图像分辨率（DPI）
+     *
+     * 没有 DPI 元数据的图片（网上下载的图基本都是）通常返回 1，
+     * 需要按 300dpi 交付时用 setResolution() 显式设置。
+     *
+     * @param string $source 源图片路径
+     *
+     * @return array 0 - 水平 DPI，1 - 垂直 DPI
+     * @throws image\Exception
+     */
+    public static function resolution($source)
+    {
+        //打开后读取 DPI
+        return Image::open($source)->resolution();
+    }
+
+    /**
+     * 设置图像分辨率（DPI）并保存
+     *
+     * @param string     $source 源图片路径
+     * @param string     $save   处理后的保存路径
+     * @param float      $x      水平 DPI
+     * @param null|float $y      垂直 DPI，不传时与水平方向相同
+     *
+     * @return string 实际写入的目标文件路径
+     * @throws image\Exception
+     */
+    public static function setResolution($source, $save, $x, $y = null)
+    {
+        //打开源图
+        $image = Image::open($source);
+
+        //写入新的 DPI
+        $image->setResolution($x, $y);
+
+        //按目标扩展名保存
+        $image->save($save, self::extensionOf($save));
+
+        //返回实际写入的路径
+        return $save;
+    }
+
+    /**
+     * 提取图像主色调
+     *
+     * @param string  $source 源图片路径
+     * @param integer $count  取几个颜色
+     *
+     * @return array 十六进制颜色数组，如 ['#f5c26b', '#2b2b2b']
+     * @throws image\Exception
+     */
+    public static function colors($source, $count = 5)
+    {
+        //打开后提取主色
+        return Image::open($source)->colors($count);
+    }
+
+    /**
      * 仅保存（可用于格式转换或重新压缩，不做任何画面处理）
      *
      * @param string      $source    源图片路径
